@@ -14,8 +14,10 @@ Estimasi total: ±20–30 menit. Yang perlu disiapkan: akun GitHub, email untuk 
    - Region: `Southeast Asia (Singapore)` — terdekat dari Indonesia
    - Plan: Free
 3. Tunggu provisioning ±1–2 menit sampai dashboard siap.
-4. **Buat bucket storage**: menu **SQL Editor** → New query → paste SELURUH isi file `supabase/setup.sql` dari repo → **Run**.
-   - Cek: menu **Storage** harus muncul bucket `uploads` berlabel *public*.
+4. **Setup database + storage SEKALIGUS**: menu **SQL Editor** → New query → paste SELURUH isi file `supabase/setup.sql` dari repo → **Run**.
+   File ini lengkap: membuat 18 tabel + index, seed Settings, dan bucket storage.
+   - Cek 1: di SQL Editor jalankan `select count(*) from information_schema.tables where table_schema='public';` → harus **18**
+   - Cek 2: menu **Storage** → muncul bucket `uploads` berlabel *public*
 5. **Ambil kredensial** (simpan dulu di notepad):
    - **Project Settings → Database → Connection string**:
      - tab **Transaction pooler** (port `6543`, host `…pooler.supabase.com`) → ini `DATABASE_URL`. Ganti bagian `[YOUR-PASSWORD]` dengan password database dari langkah 2.
@@ -24,9 +26,9 @@ Estimasi total: ±20–30 menit. Yang perlu disiapkan: akun GitHub, email untuk 
      - *Project URL* → `NEXT_PUBLIC_SUPABASE_URL`
      - *Project API keys → anon public* → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-## TAHAP 2 — Buat tabel database (sekali, dari laptop)
+## TAHAP 2 — (OPSIONAL) Verifikasi skema dari laptop
 
-Butuh Node.js 18+ (https://nodejs.org).
+`setup.sql` sudah membuat SEMUA tabel — tahap ini tidak wajib. Hanya jalankan kalau mau memastikan Prisma sinkron (butuh Node.js 18+):
 
 ```bash
 git clone https://github.com/ph1xzx/riset-ai.git

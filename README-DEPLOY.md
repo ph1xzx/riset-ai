@@ -29,12 +29,8 @@ Repo → **Settings → Deploy keys → Add deploy key**:
    - **Database → Connection string**: *Transaction pooler* (port 6543) → `DATABASE_URL`, dan *Direct connection* (port 5432) → `DIRECT_URL`.
    - **API**: Project URL → `NEXT_PUBLIC_SUPABASE_URL`, `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
-### 3. Buat skema tabel (sekali)
-Dari laptop/CI (butuh Node ≥ 18):
-```bash
-npm install
-DATABASE_URL="..." DIRECT_URL="..." npm run db:push   # pakai koneksi DIRECT
-```
+### 3. Skema database — cukup via SQL Editor
+Jalankan `supabase/setup.sql` di **SQL Editor** Supabase: membuat 18 tabel + index + seed Settings + bucket storage sekaligus. Tidak perlu `prisma db push`. (Opsional: verifikasi dari laptop dengan `DATABASE_URL="..." DIRECT_URL="..." npx prisma db push` — hasilnya harus "already in sync".)
 
 ### 4. Vercel
 1. **Add New → Project → Import** repo GitHub ini.
