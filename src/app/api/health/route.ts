@@ -52,6 +52,16 @@ export async function GET() {
     checks.push({ name: "Koneksi database", status: "fail", detail: `${hostOf(dbUrl)} → ${String(e.message || e).split("\n")[0]}` });
   }
 
+  /* 1b) DIRECT_URL — dipakai migrasi (prisma db push) */
+  const directUrl = process.env.DIRECT_URL || "";
+  if (!directUrl) {
+    checks.push({ name: "DIRECT_URL", status: "warn", detail: "belum di-set — prisma db push dari laptop/CI tidak bisa (runtime aman)" });
+  } else if (/@db\.[^:/]+\.supabase\.co/.test(directUrl)) {
+    checks.push({ name: "DIRECT_URL", status: "warn", detail: `${hostOf(directUrl)} — host direct lama; pakai Session Pooler (…pooler.supabase.com:5432)` });
+  } else {
+    checks.push({ name: "DIRECT_URL", status: "ok", detail: `ter-set → ${hostOf(directUrl)}` });
+  }
+
   /* 2) Tabel skema (setup.sql sudah dijalankan?) */
   try {
     const rows: any[] = await withTimeout(
