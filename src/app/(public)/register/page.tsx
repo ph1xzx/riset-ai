@@ -11,11 +11,32 @@ export default function RegisterPage() {
   const [univ, setUniv] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    // FLOW SAJA — belum ada logic autentikasi. Lanjut ke dashboard.
-    router.push("/dashboard");
+    setErr("");
+    if (pass !== pass2) {
+      setErr("Konfirmasi kata sandi tidak sama.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, university: univ, email, password: pass }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || "Gagal mendaftar");
+      router.push("/dashboard");
+      router.refresh();
+    } catch (e: any) {
+      setErr(e.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -43,6 +64,11 @@ export default function RegisterPage() {
         </p>
 
         <form onSubmit={submit} className="mt-10 space-y-7">
+          {err && (
+            <div className="text-[13px] px-4 py-3" style={{ background: "#fdecec", color: "#b3261e" }}>
+              {err}
+            </div>
+          )}
           <div>
             <input
               className="mkt-input"
@@ -76,14 +102,28 @@ export default function RegisterPage() {
             <input
               className="mkt-input"
               type="password"
-              placeholder="Kata sandi"
+              placeholder="Kata sandi (minimal 8 karakter)"
               value={pass}
               onChange={(e) => setPass(e.target.value)}
               autoComplete="new-password"
+              minLength={8}
+              required
             />
           </div>
-          <button type="submit" className="mkt-btn mkt-btn--accent w-full justify-center">
-            Buat akun <ArrowRight size={14} />
+          <div>
+            <input
+              className="mkt-input"
+              type="password"
+              placeholder="Ulangi kata sandi"
+              value={pass2}
+              onChange={(e) => setPass2(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </div>
+          <button type="submit" className="mkt-btn mkt-btn--accent w-full justify-center" disabled={busy}>
+            {busy ? "Membuat akun…" : <>Buat akun <ArrowRight size={14} /></>}
           </button>
         </form>
 
@@ -92,13 +132,6 @@ export default function RegisterPage() {
           <Link href="/login" className="underline" style={{ color: "#16181d" }}>
             Masuk
           </Link>
-        </div>
-        <div
-          className="mt-12 text-[11px] leading-relaxed px-4 py-3"
-          style={{ background: "#efece6", color: "#6b6d73" }}
-        >
-          <b>Mode test:</b> alur registrasi sudah dibuat, logic autentikasi belum — klik Buat akun
-          langsung masuk ke dashboard.
         </div>
       </div>
     </div>

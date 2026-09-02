@@ -9,11 +9,28 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    // FLOW SAJA — belum ada logic autentikasi. Lanjut ke dashboard.
-    router.push("/dashboard");
+    setErr("");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || "Gagal masuk");
+      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
+      router.push(next);
+      router.refresh();
+    } catch (e: any) {
+      setErr(e.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -41,6 +58,11 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={submit} className="mt-10 space-y-7">
+          {err && (
+            <div className="text-[13px] px-4 py-3" style={{ background: "#fdecec", color: "#b3261e" }}>
+              {err}
+            </div>
+          )}
           <div>
             <input
               className="mkt-input"
@@ -49,6 +71,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              required
             />
           </div>
           <div>
@@ -59,10 +82,11 @@ export default function LoginPage() {
               value={pass}
               onChange={(e) => setPass(e.target.value)}
               autoComplete="current-password"
+              required
             />
           </div>
-          <button type="submit" className="mkt-btn mkt-btn--accent w-full justify-center">
-            Masuk <ArrowRight size={14} />
+          <button type="submit" className="mkt-btn mkt-btn--accent w-full justify-center" disabled={busy}>
+            {busy ? "Memeriksa…" : <>Masuk <ArrowRight size={14} /></>}
           </button>
         </form>
 
@@ -71,13 +95,6 @@ export default function LoginPage() {
           <Link href="/register" className="underline" style={{ color: "#16181d" }}>
             Daftar di sini
           </Link>
-        </div>
-        <div
-          className="mt-12 text-[11px] leading-relaxed px-4 py-3"
-          style={{ background: "#efece6", color: "#6b6d73" }}
-        >
-          <b>Mode test:</b> alur login/registrasi sudah dibuat, logic autentikasi belum — klik Masuk
-          langsung masuk ke dashboard.
         </div>
       </div>
     </div>

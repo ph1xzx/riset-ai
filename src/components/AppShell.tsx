@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, FileSearch, Library, Settings, Plus, Upload, FlaskConical, ScrollText } from "lucide-react";
 
@@ -17,14 +17,26 @@ const NAV = [
    (#101114, teks bone, mono uppercase, hover #8db4ff). */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [aiReady, setAiReady] = useState<boolean | null>(null);
+  const [me, setMe] = useState<{ email: string; name: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((j) => setAiReady(j.configured))
       .catch(() => setAiReady(false));
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setMe(j?.user || null))
+      .catch(() => {});
   }, [pathname]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -83,9 +95,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
             {aiReady === null ? "Memeriksa AI…" : aiReady ? "API key aktif" : "API key belum diset"}
           </div>
-          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/30 mt-1.5">
-            Single-user mode — tanpa login
+          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/30 mt-1.5 truncate">
+            {me ? me.email : "Sesi lokal"}
           </div>
+          {me && (
+            <button
+              onClick={logout}
+              className="mt-2 w-full text-left font-mono text-[10px] uppercase tracking-[0.12em] text-white/45 hover:text-[#ff9a9a] transition-colors"
+            >
+              Keluar →
+            </button>
+          )}
         </div>
       </aside>
 

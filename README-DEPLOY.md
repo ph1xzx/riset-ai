@@ -44,6 +44,7 @@ DATABASE_URL="..." DIRECT_URL="..." npm run db:push   # pakai koneksi DIRECT
    - `DIRECT_URL` (direct 5432) — **dibutuhkan juga saat build** (Prisma membacanya ketika generate); boleh disamakan dengan DATABASE_URL kalau tidak menjalankan `db push` dari CI
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `AUTH_SECRET` — string acak ≥16 karakter untuk menandatangani cookie sesi login (buat via `openssl rand -base64 32`); tanpa ini auth memakai secret development yang TIDAK aman
 4. Deploy. Setelah live: buka `/settings` → isi Base URL + API key Gemini → simpan.
 
 ### 5. Smoke test pasca-deploy
