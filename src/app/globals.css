@@ -1,0 +1,371 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  /* sama dengan landing: bone #fbfaf7 */
+  @apply bg-bone-50 text-ink-900 antialiased;
+}
+
+/* ---------- editor ---------- */
+.tiptap {
+  @apply outline-none min-h-[60vh] px-8 py-6;
+  max-width: 72ch;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+.tiptap h1 {
+  @apply text-2xl font-bold mt-6 mb-3;
+}
+.tiptap h2 {
+  @apply text-xl font-semibold mt-5 mb-2;
+}
+.tiptap p {
+  @apply mb-4;
+}
+.tiptap blockquote {
+  @apply border-l-4 border-ink-200 pl-4 italic text-ink-600 my-4;
+}
+.tiptap ul {
+  @apply list-disc pl-6 mb-4;
+}
+.tiptap ol {
+  @apply list-decimal pl-6 mb-4;
+}
+.tiptap table {
+  @apply border-collapse my-4 w-full;
+}
+.tiptap th,
+.tiptap td {
+  @apply border border-ink-300 px-3 py-1.5 text-sm;
+}
+.tiptap th {
+  @apply bg-ink-100 font-semibold;
+}
+.tiptap img {
+  @apply max-w-full rounded my-2;
+}
+.tiptap sup.citation {
+  @apply text-brand-700 cursor-pointer mx-0.5 font-medium;
+  border-bottom: 1px dashed brand-400;
+}
+.tiptap .ghost-text {
+  @apply text-ink-300 italic;
+  border-bottom: 1px dotted ink-300;
+  user-select: none;
+}
+.tiptap .ProseMirror-selectednode {
+  outline: 2px solid brand-400;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply float-left text-ink-300 h-0 pointer-events-none;
+}
+
+/* ---------- ui bits ---------- */
+/* ---------- komponen app: gaya editorial menyambung landing ----------
+   sudut tegas, border hairline, aksen #3564ff (= brand-500), label mono
+   uppercase — sama seperti kelas .mkt-* di halaman publik. */
+.card {
+  @apply bg-white rounded-none border border-ink-200 shadow-none;
+}
+.btn {
+  @apply inline-flex items-center gap-2 rounded-none px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary {
+  @apply btn bg-ink-950 text-bone-50 hover:bg-ink-800;
+}
+.btn-ghost {
+  @apply btn text-ink-600 hover:bg-ink-100;
+}
+.btn-outline {
+  @apply btn border border-ink-300 bg-white hover:bg-ink-50 text-ink-700;
+}
+.input {
+  @apply w-full rounded-none border border-ink-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-400 focus:border-brand-500;
+}
+.label {
+  @apply block font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500 mb-1;
+}
+.chip {
+  @apply inline-flex items-center gap-1 rounded-none px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide font-medium;
+}
+.toast {
+  @apply fixed bottom-5 right-5 z-[100] rounded-lg px-4 py-3 text-sm shadow-lg text-white;
+}
+
+/* ================= TEMA PUBLIK (landing/login/register) — editorial ================= */
+/* Terinspirasi pola desain serotoninn.com (tema saja, bukan salinan): header
+   mix-blend-difference mengambang, logo di tengah, side-menu panel gelap dengan
+   reveal scaleX/scaleY + kolom art, tipografi hairline-first-letter. */
+
+.mkt {
+  background: #fbfaf7;
+  color: #16181d;
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+}
+.mkt-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  color: #fff;
+  mix-blend-mode: difference;
+  padding: 1.4rem 1.6rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+.mkt-nav a,
+.mkt-nav button {
+  font-family: var(--font-plexmono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: -0.06em;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: opacity 0.3s;
+}
+.mkt-nav a:hover,
+.mkt-nav button:hover {
+  opacity: 0.6;
+}
+.mkt-nav-left {
+  justify-self: start;
+  display: flex;
+  gap: 1.6rem;
+}
+.mkt-nav-right {
+  justify-self: end;
+  display: flex;
+  gap: 1.6rem;
+}
+.mkt-logo {
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  transition: transform 0.5s cubic-bezier(0.75, 0, 0.25, 1);
+  transform-origin: top center;
+}
+.mkt-logo .hl {
+  font-weight: 100;
+}
+.mkt-nav.is-small .mkt-logo {
+  transform: scale(0.72);
+}
+
+/* Headline editorial: karakter pertama hairline */
+.mkt-h1 {
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  font-size: clamp(2.6rem, 7vw, 6rem);
+}
+.mkt-h1 .hl {
+  font-weight: 100;
+}
+.mkt-h2 {
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-size: clamp(1.9rem, 4vw, 3.4rem);
+}
+.mkt-h2 .hl,
+.mkt-h3 .hl {
+  font-weight: 100;
+}
+.mkt-h3 {
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-size: 1.25rem;
+}
+.mkt-label {
+  font-family: var(--font-plexmono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  color: rgba(22, 24, 29, 0.55);
+}
+.mkt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #16181d;
+  color: #fbfaf7;
+  font-family: var(--font-plexmono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  font-size: 0.78rem;
+  padding: 0.85rem 1.5rem;
+  border: 1px solid #16181d;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+}
+.mkt-btn:hover {
+  background: transparent;
+  color: #16181d;
+}
+.mkt-btn--accent {
+  background: #3564ff;
+  border-color: #3564ff;
+}
+.mkt-btn--accent:hover {
+  background: transparent;
+  color: #3564ff;
+  border-color: #3564ff;
+}
+.mkt-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(22, 24, 29, 0.25);
+  padding: 0.7rem 0;
+  font-size: 0.95rem;
+  font-family: var(--font-inter), Inter, sans-serif;
+  color: #16181d;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.mkt-input::placeholder {
+  color: rgba(22, 24, 29, 0.35);
+}
+.mkt-input:focus {
+  border-color: #3564ff;
+}
+
+/* Marquee strip */
+.mkt-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  border-top: 1px solid rgba(22, 24, 29, 0.12);
+  border-bottom: 1px solid rgba(22, 24, 29, 0.12);
+  padding: 0.9rem 0;
+}
+.mkt-marquee-inner {
+  display: inline-block;
+  animation: mkt-marquee 28s linear infinite;
+  font-family: var(--font-plexmono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  color: rgba(22, 24, 29, 0.6);
+}
+@keyframes mkt-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Side menu (panel gelap + kolom art) */
+.mkt-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.5s, visibility 0s 0.5s;
+}
+.mkt-menu.is-open {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.5s;
+}
+.mkt-menu-panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(37vw, 520px);
+  background: #101114;
+  color: #fbfaf7;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s cubic-bezier(0.75, 0, 0.25, 1);
+  display: flex;
+  flex-direction: column;
+  padding: 6.5rem 2.5rem 1.75rem;
+  overflow-y: auto;
+}
+.mkt-menu.is-open .mkt-menu-panel {
+  transform: scaleX(1);
+}
+.mkt-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fbfaf7;
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  padding: 0.35rem 0;
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.6s cubic-bezier(0.75, 0, 0.25, 1);
+  opacity: 0;
+}
+.mkt-menu.is-open .mkt-menu-item {
+  transform: scaleY(1);
+  opacity: 1;
+}
+.mkt-menu-item .hl {
+  font-weight: 100;
+}
+.mkt-menu-item:hover {
+  color: #8db4ff;
+}
+.mkt-menu-art {
+  position: absolute;
+  left: min(37vw, 520px);
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: #efece6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.7s 0.3s;
+}
+.mkt-menu.is-open .mkt-menu-art {
+  opacity: 1;
+}
+.mkt-menu-art img {
+  width: min(46vw, 640px);
+  height: auto;
+  object-fit: contain;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+}
+@media (max-width: 900px) {
+  .mkt-menu-art {
+    display: none;
+  }
+  .mkt-menu-panel {
+    width: 100vw;
+  }
+}

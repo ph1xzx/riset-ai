@@ -1,0 +1,265 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"] // "native" = lokal, debian = runtime Vercel
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Vercel: pakai connection string POOLER (port 6543)
+  directUrl = env("DIRECT_URL") // migrasi/db push: koneksi langsung (port 5432)
+}
+
+model Settings {
+  id             Int      @id @default(1)
+  provider       String   @default("openai-compatible")
+  baseUrl        String   @default("")
+  apiKey         String   @default("")
+  model          String   @default("")
+  imageModel     String   @default("")
+  embeddingModel String   @default("")
+  temperature    Float    @default(0.4)
+  maxTokens      Int      @default(4096)
+  updatedAt      DateTime @updatedAt
+}
+
+model Project {
+  id              String   @id @default(cuid())
+  title           String   @default("Untitled research")
+  type            String   @default("Skripsi")
+  topic           String   @default("")
+  field           String   @default("")
+  object          String   @default("")
+  caseStudy       String   @default("")
+  problem         String   @default("")
+  method          String   @default("")
+  language        String   @default("id")
+  citationStyle   String   @default("APA7")
+  yearFrom        Int?
+  yearTo          Int?
+  minCitations    Int?
+  includePreprint Boolean  @default(false)
+  campusStyle     String   @default("{}")
+  documentPrompt  String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memory      ResearchMemory?
+  sections    Section[]
+  sources     Source[]
+  collections Collection[]
+  threads     ChatThread[]
+  reviews     Review[]
+  citations   Citation[]
+  usages      CitationUsage[]
+  runs        AIRun[]
+  exports     ExportJob[]
+}
+
+model ResearchMemory {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  title          String   @default("")
+  problems       String   @default("[]")
+  questions      String   @default("[]")
+  objectives     String   @default("[]")
+  researchObject String   @default("")
+  methodology    String   @default("")
+  population     String   @default("")
+  sample         String   @default("")
+  sampleSize     String   @default("")
+  variables      String   @default("[]")
+  criteria       String   @default("[]")
+  alternatives   String   @default("[]")
+  dataCollection String   @default("[]")
+  analysisMethod String   @default("")
+  limitations    String   @default("[]")
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Section {
+  id        String   @id @default(cuid())
+  projectId String
+  parentId  String?
+  title     String
+  order     Int      @default(0)
+  level     Int      @default(1)
+  content   String   @default("")
+  status    String   @default("EMPTY")
+  prompt    String   @default("")
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Source {
+  id            String   @id @default(cuid())
+  projectId     String
+  title         String
+  authors       String   @default("[]")
+  year          Int?
+  journal       String   @default("")
+  doi           String?
+  abstract      String   @default("")
+  url           String   @default("")
+  pdfUrl        String   @default("")
+  citationCount Int      @default(0)
+  openAccess    Boolean  @default(false)
+  provider      String   @default("openalex")
+  type          String   @default("article")
+  keywords      String   @default("[]")
+  impactFactor  Float?
+  verified      String   @default("METADATA_ONLY")
+  addedAt       DateTime @default(now())
+
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chunks     SourceChunk[]
+  usages     CitationUsage[]
+  citations  Citation[]
+  collections CollectionSource[]
+}
+
+model SourceChunk {
+  id       String @id @default(cuid())
+  sourceId String
+  text     String
+  page     Int?
+  index    Int    @default(0)
+
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}
+
+model Collection {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String
+  sources   CollectionSource[]
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model CollectionSource {
+  collectionId String
+  sourceId     String
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  source     Source     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, sourceId])
+}
+
+model Citation {
+  // Hasil "cek sitasi" per proyek. sourceId hanya terisi bila sitasi
+  // cocok dengan sumber di library proyek; sisanya hasil verifikasi
+  // eksternal (Crossref/OpenAlex) yang disimpan di field matched*.
+  id             String   @id @default(cuid())
+  projectId      String
+  sourceId       String?
+  inText         String
+  style          String   @default("apa")
+  status         String   @default("METADATA_ONLY")
+  matchedTitle   String?
+  matchedYear    Int?
+  matchedJournal String?
+  doi            String?
+  url            String?
+  note           String?
+  createdAt      DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  source  Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+}
+
+model CitationUsage {
+  id        String   @id @default(cuid())
+  projectId String
+  sectionId String
+  sourceId  String
+  marker    String
+  display   String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  source  Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}
+
+model ChatThread {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  messages  ChatMessage[]
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  role      String
+  content   String
+  context   String   @default("[]")
+  createdAt DateTime @default(now())
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  projectId String
+  summary   String   @default("")
+  createdAt DateTime @default(now())
+  issues    ReviewIssue[]
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ReviewIssue {
+  id         String  @id @default(cuid())
+  reviewId   String
+  severity   String
+  category   String
+  sectionId  String?
+  message    String
+  suggestion String  @default("")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model AIRun {
+  id        String   @id @default(cuid())
+  projectId String?
+  task      String
+  provider  String
+  model     String
+  tokens    Int      @default(0)
+  latency   Int      @default(0)
+  status    String   @default("ok")
+  error     String   @default("")
+  createdAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+}
+
+model ExportJob {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String
+  status    String   @default("ok")
+  filename  String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model WritingTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  prodi       String   @default("")
+  university  String   @default("")
+  sourceText  String   @default("") // teks pedoman mentah (opsional, untuk re-analisis)
+  config      String   @default("{}") // JSON: CampusStyle + aturan penulisan hasil parsing
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

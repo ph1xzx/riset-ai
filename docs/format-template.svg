@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="790" viewBox="0 0 1060 790" font-family="Georgia, 'Times New Roman', serif">
+  <rect width="1060" height="790" fill="#f6f2ea"/>
+  <text x="40" y="46" font-size="24" font-weight="bold" fill="#1c1a17">Format Template Pedoman — Posisi Heading &amp; Paragraf</text>
+  <text x="40" y="72" font-size="14" fill="#6b6558">Contoh render: Pedoman TI–UNPAM • A4 • margin 4/4/3/3 cm • TNR 12pt • spasi 2 • halaman BAB: nomor di tengah bawah</text>
+
+  <!-- ================= HALAMAN (mock A4) ================= -->
+  <g transform="translate(40,96)">
+    <rect x="0" y="0" width="440" height="622" fill="#fffdf8" stroke="#c9c0ae" stroke-width="1.5"/>
+    <!-- batas margin: atas 4cm≈84, kiri 4cm≈84, kanan 3cm≈63, bawah 3cm≈63 -->
+    <rect x="84" y="84" width="293" height="475" fill="none" stroke="#b8d4f2" stroke-dasharray="4 3"/>
+    <text x="6" y="50" font-size="10" fill="#7a8ca0">4 cm</text>
+    <text x="30" y="330" font-size="10" fill="#7a8ca0" transform="rotate(-90 30 330)">4 cm</text>
+    <text x="398" y="330" font-size="10" fill="#7a8ca0" transform="rotate(-90 398 330)">3 cm</text>
+    <text x="200" y="606" font-size="10" fill="#7a8ca0">3 cm</text>
+
+    <!-- nomor halaman kanan atas -->
+    <text x="377" y="30" font-size="12" fill="#1c1a17">12</text>
+    <text x="300" y="30" font-size="9" fill="#a3b8cc">nomor: kanan atas</text>
+
+    <!-- garis panduan margin kiri untuk heading -->
+    <line x1="84" y1="80" x2="84" y2="500" stroke="#e0a458" stroke-width="1" stroke-dasharray="2 3"/>
+
+    <!-- BAB (center, bold, uppercase) -->
+    <text x="230" y="120" font-size="14" font-weight="bold" text-anchor="middle" fill="#1c1a17">BAB III</text>
+    <text x="230" y="140" font-size="14" font-weight="bold" text-anchor="middle" fill="#1c1a17">METODOLOGI PENELITIAN</text>
+
+    <!-- 3.1 -->
+    <text x="84" y="182" font-size="12" font-weight="bold" fill="#1c1a17">3.1 Metode Penelitian</text>
+    <!-- paragraf: baris pertama menjorok 12.7mm≈36px -->
+    <rect x="120" y="196" width="257" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="210" width="293" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="224" width="293" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="238" width="200" height="6" rx="2" fill="#d8d2c4"/>
+    <text x="128" y="201" font-size="8.5" fill="#e0a458">↖ first line indent 5 ketukan (±1,27 cm) — hanya baris pertama</text>
+
+    <!-- 3.1.1 — x SAMA dengan 3.1 -->
+    <text x="84" y="284" font-size="12" font-weight="bold" fill="#1c1a17">3.1.1 Jenis dan Pendekatan Penelitian</text>
+    <rect x="120" y="298" width="257" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="312" width="293" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="326" width="230" height="6" rx="2" fill="#d8d2c4"/>
+
+    <!-- 3.1.2.1 — tetap di margin kiri -->
+    <text x="84" y="372" font-size="12" fill="#1c1a17">3.1.2.1 Observasi</text>
+    <rect x="120" y="386" width="257" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="400" width="293" height="6" rx="2" fill="#d8d2c4"/>
+    <rect x="84" y="414" width="180" height="6" rx="2" fill="#d8d2c4"/>
+
+    <text x="92" y="462" font-size="9.5" fill="#e0a458">← garis oranye: SEMUA heading (3.1, 3.1.1, 3.1.2.1) mulai di posisi yang sama</text>
+    <text x="92" y="478" font-size="9.5" fill="#e0a458">    Hierarki terlihat dari NOMOR, bukan dari indentasi.</text>
+
+    <!-- nomor tengah bawah di halaman awal bab -->
+    <text x="230" y="575" font-size="11" text-anchor="middle" fill="#1c1a17">13</text>
+    <text x="230" y="592" font-size="8.5" text-anchor="middle" fill="#a3b8cc">halaman awal BAB: nomor tengah bawah</text>
+  </g>
+
+  <!-- ================= PANEL BENAR vs SALAH ================= -->
+  <g transform="translate(540,96)">
+    <rect x="0" y="0" width="480" height="290" fill="#fffdf8" stroke="#c9c0ae" stroke-width="1.5"/>
+    <text x="24" y="36" font-size="16" font-weight="bold" fill="#1c1a17">✓ BENAR — heading rata margin kiri</text>
+    <line x1="60" y1="52" x2="60" y2="250" stroke="#e0a458" stroke-dasharray="2 3"/>
+    <text x="60" y="84" font-size="13" font-weight="bold" fill="#1c1a17">3.1 Metode Penelitian</text>
+    <text x="60" y="124" font-size="13" font-weight="bold" fill="#1c1a17">3.1.1 Jenis dan Pendekatan Penelitian</text>
+    <text x="60" y="164" font-size="13" fill="#1c1a17">3.1.1.1 Penelitian Terapan</text>
+    <text x="60" y="204" font-size="13" font-weight="bold" fill="#1c1a17">3.2 Analisis Sistem</text>
+    <text x="60" y="268" font-size="10.5" fill="#6b6558">Left indent = 0 untuk Heading 2/3/4 — tidak boleh menjorok.</text>
+  </g>
+
+  <g transform="translate(540,410)">
+    <rect x="0" y="0" width="480" height="240" fill="#fffdf8" stroke="#c9c0ae" stroke-width="1.5"/>
+    <text x="24" y="36" font-size="16" font-weight="bold" fill="#a03030">✗ SALAH — heading dibuat “tangga”</text>
+    <text x="60" y="84" font-size="13" font-weight="bold" fill="#1c1a17">3.1 Metode Penelitian</text>
+    <text x="110" y="124" font-size="13" font-weight="bold" fill="#1c1a17">3.1.1 Jenis Penelitian</text>
+    <text x="170" y="164" font-size="13" fill="#1c1a17">3.1.1.1 Penelitian Terapan</text>
+    <line x1="60" y1="60" x2="170" y2="170" stroke="#a03030" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="60" y="212" font-size="10.5" fill="#a03030">Indentasi bertingkat hanya boleh di DAFTAR ISI,</text>
+    <text x="60" y="228" font-size="10.5" fill="#a03030">bukan di halaman isi skripsi.</text>
+  </g>
+
+  <g transform="translate(540,674)">
+    <text x="0" y="16" font-size="11.5" fill="#6b6558">Paragraf isi: justify • spasi 2 • before/after 0 pt • baris pertama menjorok 5 ketukan (±1,27 cm).</text>
+    <text x="0" y="36" font-size="11.5" fill="#6b6558">BAB baru selalu mulai di halaman baru (page break) • daftar pustaka: hanging indent, spasi 1.</text>
+    <text x="0" y="56" font-size="11.5" fill="#6b6558">Nomor halaman: romawi kecil (i, ii, …) di bagian awal, arab (1, 2, …) mulai BAB I.</text>
+  </g>
+</svg>
