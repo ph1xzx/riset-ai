@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 
 /** Registrasi akun baru → langsung login (cookie sesi). */
 export async function POST(req: NextRequest) {
-  const b = await req.json().catch(() => ({}));
+  try {
+    const b = await req.json().catch(() => ({}));
   const email = String(b.email || "").trim().toLowerCase();
   const password = String(b.password || "");
   const name = String(b.name || "").trim();
@@ -34,6 +35,17 @@ export async function POST(req: NextRequest) {
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
   return res;
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    const hint = /table .* does not exist|P2021/i.test(msg)
+      ? " — tabel belum dibuat: jalankan supabase/setup.sql di SQL Editor"
+      : /P1001|P1017|Can't reach|timeout/i.test(msg)
+        ? " — database tidak terjangkau: cek DATABASE_URL (pooler 6543)"
+        : /Environment variable not found|DIRECT_URL|DATABASE_URL/i.test(msg)
+          ? " — env database belum di-set di Vercel"
+          : "";
+    return NextResponse.json({ error: `Gagal mendaftar: ${msg}${hint}` }, { status: 500 });
+  }
 }
 
 // jangan pernah prerender saat build — route ini butuh runtime (DB/env)
