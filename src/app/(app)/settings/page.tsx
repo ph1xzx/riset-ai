@@ -16,6 +16,20 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [health, setHealth] = useState<any>(null);
+  const [healthBusy, setHealthBusy] = useState(false);
+
+  async function runHealthCheck() {
+    setHealthBusy(true);
+    try {
+      const j = await fetch("/api/health").then((r) => r.json());
+      setHealth(j);
+    } catch (e: any) {
+      setHealth({ overall: "fail", runtime: "?", node: "?", checks: [{ name: "Endpoint /api/health", status: "fail", detail: e.message }] });
+    } finally {
+      setHealthBusy(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/settings").then((r) => r.json()).then((j) => {
@@ -155,6 +169,41 @@ export default function SettingsPage() {
           <li>• Contoh endpoint: OpenRouter <code className="text-xs bg-ink-100 px-1 rounded">https://openrouter.ai/api/v1</code>, Ollama{" "}
             <code className="text-xs bg-ink-100 px-1 rounded">http://localhost:11434/v1</code></li>
         </ul>
+      </div>
+
+      <div className="card p-6 space-y-3">
+        <div className="font-semibold flex items-center gap-2">
+          <AlertTriangle size={16} className="text-brand-600" /> Cek koneksi sistem
+        </div>
+        <p className="text-sm text-ink-600">
+          Menguji seluruh konfigurasi env & layanan: database, skema tabel, Supabase Storage, AUTH_SECRET, konfigurasi
+          AI, dan LibreOffice. Endpoint yang sama: <code className="text-xs bg-ink-100 px-1 rounded">/api/health</code>
+        </p>
+        <button className="btn-outline" onClick={runHealthCheck} disabled={healthBusy}>
+          {healthBusy ? "Memeriksa…" : "Jalankan pemeriksaan"}
+        </button>
+        {health && (
+          <div className="space-y-1.5">
+            <div
+              className={`chip ${
+                health.overall === "ok" ? "bg-emerald-100 text-emerald-700" : health.overall === "warn" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+              }`}
+            >
+              Status keseluruhan: {health.overall.toUpperCase()} • {health.runtime} • node {health.node}
+            </div>
+            {health.checks.map((c: any, i: number) => (
+              <div
+                key={i}
+                className={`text-sm rounded-lg px-3 py-2 ${
+                  c.status === "ok" ? "bg-emerald-50 text-emerald-800" : c.status === "warn" ? "bg-amber-50 text-amber-800" : "bg-red-50 text-red-700"
+                }`}
+              >
+                <b>{c.status === "ok" ? "✓" : c.status === "warn" ? "⚠" : "✗"} {c.name}</b>
+                <span className="block text-xs opacity-80">{c.detail}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

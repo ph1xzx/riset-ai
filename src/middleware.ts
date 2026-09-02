@@ -8,7 +8,7 @@ import { verifyToken, SESSION_COOKIE } from "@/lib/auth-token";
  *   Halaman → redirect /login?next=…; API → 401 JSON.
  */
 const PUBLIC_EXACT = ["/", "/login", "/register"];
-const PUBLIC_PREFIX = ["/api/auth/"];
+const PUBLIC_PREFIX = ["/api/auth/", "/api/health"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
