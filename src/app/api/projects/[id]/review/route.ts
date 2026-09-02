@@ -122,3 +122,6 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
 
   return NextResponse.json(review);
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

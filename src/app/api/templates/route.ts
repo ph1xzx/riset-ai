@@ -56,3 +56,6 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ id: row.id, config, detected, warnings }, { status: 201 });
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

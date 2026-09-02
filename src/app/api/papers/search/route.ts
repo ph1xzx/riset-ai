@@ -25,3 +25,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 502 });
   }
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

@@ -29,3 +29,6 @@ export async function POST(req: NextRequest) {
   });
   return res;
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

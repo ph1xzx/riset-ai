@@ -61,3 +61,6 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

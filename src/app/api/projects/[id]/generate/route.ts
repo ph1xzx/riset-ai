@@ -91,3 +91,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

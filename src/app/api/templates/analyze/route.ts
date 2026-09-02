@@ -12,3 +12,6 @@ export async function POST(req: NextRequest) {
   const { config, detected, warnings } = parsePedoman(text);
   return NextResponse.json({ config, detected, warnings });
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

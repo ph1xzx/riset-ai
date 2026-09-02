@@ -12,3 +12,6 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Sesi tidak valid" }, { status: 401 });
   return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name, university: user.university } });
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

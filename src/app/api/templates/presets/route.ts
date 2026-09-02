@@ -7,3 +7,6 @@ export const runtime = "nodejs";
 export async function GET() {
   return NextResponse.json({ presets: TEMPLATE_PRESETS });
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

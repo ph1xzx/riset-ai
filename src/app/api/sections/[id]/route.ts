@@ -42,3 +42,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   );
   return NextResponse.json({ ok: true });
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";

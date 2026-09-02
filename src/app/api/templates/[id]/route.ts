@@ -42,3 +42,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   await prisma.writingTemplate.deleteMany({ where: { id: params.id } });
   return NextResponse.json({ ok: true });
 }
+
+// jangan pernah prerender saat build — route ini butuh runtime (DB/env)
+export const dynamic = "force-dynamic";
