@@ -22,7 +22,7 @@ export default function SettingsPage() {
   async function runHealthCheck() {
     setHealthBusy(true);
     try {
-      const j = await fetch("/api/health").then((r) => r.json());
+      const j = await fetch("/api/health?json=1").then((r) => r.json());
       setHealth(j);
     } catch (e: any) {
       setHealth({ overall: "fail", runtime: "?", node: "?", checks: [{ name: "Endpoint /api/health", status: "fail", detail: e.message }] });
