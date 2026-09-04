@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import {
   X, Search, Sparkles, BookOpen, ExternalLink, Check, Loader2,
-  FileText, ArrowRight, ShieldAlert, Layers
+  FileText, ArrowRight, ShieldAlert, Layers, AlertTriangle
 } from "lucide-react";
 
 export type CitationOpportunity = {
@@ -39,6 +39,8 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
   const [selectedTargetId, setSelectedTargetId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [stepMsg, setStepMsg] = useState("");
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [opportunities, setOpportunities] = useState<CitationOpportunity[] | null>(null);
   const [insertedIds, setInsertedIds] = useState<Record<string, boolean>>({});
   const [savingLibrary, setSavingLibrary] = useState<Record<string, boolean>>({});
@@ -98,6 +100,8 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
 
   async function runScan() {
     setBusy(true);
+    setScanError(null);
+    setScanNotice(null);
     setStepMsg("Memindai naskah untuk mencari kalimat tanpa rujukan…");
     setOpportunities(null);
 
@@ -111,16 +115,26 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
         }),
       });
 
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "Gagal memindai sitasi");
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = j.error || `Error ${res.status}: Gagal memindai sitasi`;
+        setScanError(msg);
+        setOpportunities([]);
+        notify(msg);
+        return;
+      }
 
+      if (j.notice) setScanNotice(j.notice);
       setOpportunities(j.opportunities || []);
-      if (j.opportunities?.length === 0) {
-        notify(j.message || "Bagus! Tidak ditemukan klaim yang memerlukan sitasi tambahan pada bagian ini.");
+
+      if (!j.opportunities || j.opportunities.length === 0) {
+        notify(j.message || "Tidak ditemukan klaim yang memerlukan sitasi tambahan pada bagian ini.");
       } else {
         notify(`Ditemukan ${j.opportunities.length} kalimat yang membutuhkan rujukan ilmiah.`);
       }
     } catch (e: any) {
+      setScanError(e.message || "Gagal menghubungi server");
+      setOpportunities([]);
       notify(e.message);
     } finally {
       setBusy(false);
@@ -236,17 +250,57 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
 
         {/* Area Konten / Hasil */}
         <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+          {scanNotice && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <Sparkles size={14} className="text-amber-600 shrink-0" />
+                <span>{scanNotice}</span>
+              </span>
+              <a
+                href="/settings"
+                target="_blank"
+                className="font-semibold text-amber-900 underline hover:no-underline shrink-0"
+              >
+                Pengaturan API Key →
+              </a>
+            </div>
+          )}
+
+          {scanError && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-2">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-rose-900 text-sm">Gagal Melakukan Pemindaian</div>
+                  <div className="mt-1 text-rose-800">{scanError}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1 pl-7">
+                <button className="btn-outline !py-1 !px-2.5 !text-[11px] bg-white text-rose-700 border-rose-300 hover:bg-rose-50" onClick={runScan}>
+                  Coba Lagi
+                </button>
+                <a
+                  href="/settings"
+                  target="_blank"
+                  className="btn-outline !py-1 !px-2.5 !text-[11px] bg-white text-ink-700 hover:bg-ink-50"
+                >
+                  Buka Menu Settings
+                </a>
+              </div>
+            </div>
+          )}
+
           {busy && (
             <div className="py-16 text-center space-y-3">
               <Loader2 size={32} className="animate-spin text-brand-600 mx-auto" />
               <div className="text-sm font-medium text-ink-800">{stepMsg}</div>
               <div className="text-xs text-ink-400 max-w-md mx-auto">
-                AI menganalisis argumen dan metode di naskah Anda, lalu mencocokkannya dengan database OpenAlex & Crossref.
+                Menganalisis argumen dan metode di naskah Anda, lalu mencocokkannya dengan database OpenAlex & Crossref.
               </div>
             </div>
           )}
 
-          {!busy && opportunities === null && (
+          {!busy && opportunities === null && !scanError && (
             <div className="py-12 text-center space-y-3 border-2 border-dashed border-ink-100 rounded-xl p-8">
               <BookOpen size={36} className="text-ink-300 mx-auto" />
               <div className="text-sm font-semibold text-ink-700">Pilih Cakupan & Mulai Pemindaian</div>
@@ -259,7 +313,7 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
             </div>
           )}
 
-          {!busy && opportunities !== null && opportunities.length === 0 && (
+          {!busy && opportunities !== null && opportunities.length === 0 && !scanError && (
             <div className="py-12 text-center space-y-2 border border-emerald-100 bg-emerald-50/50 rounded-xl p-6">
               <Check size={32} className="text-emerald-600 mx-auto" />
               <div className="text-sm font-semibold text-emerald-800">Naskah Terverifikasi dengan Baik!</div>

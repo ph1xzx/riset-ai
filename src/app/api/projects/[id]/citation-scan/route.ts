@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { aiChat, AIConfigError } from "@/lib/ai/provider";
 import { citationScanMessages } from "@/lib/ai/prompts";
 import { searchPapers, type AcademicSource } from "@/lib/academic";
-import { parseJsonArray } from "@/lib/json";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -37,6 +36,89 @@ function formatInText(authors: string[], year: number | null, style = "APA"): st
   return `(${first} et al., ${yr})`;
 }
 
+/** Robust JSON parser for AI outputs (handles root array, object wrapper, or code fences) */
+function parseOpportunitiesJson(rawText: string): any[] {
+  if (!rawText) return [];
+  let clean = rawText.trim();
+  if (clean.startsWith("```")) {
+    clean = clean.replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/i, "").trim();
+  }
+  try {
+    const parsed = JSON.parse(clean);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === "object") {
+      const foundArr = Object.values(parsed).find((v) => Array.isArray(v));
+      if (foundArr && Array.isArray(foundArr)) return foundArr;
+    }
+  } catch {
+    const matches = clean.match(/\{[\s\S]*?\}/g);
+    if (matches) {
+      const items = [];
+      for (const m of matches) {
+        try {
+          const item = JSON.parse(m);
+          if (item.claim) items.push(item);
+        } catch {}
+      }
+      return items;
+    }
+  }
+  return [];
+}
+
+/** Fallback Heuristic Scanner — bekerja tanpa butuh API key AI */
+function extractHeuristicClaims(sections: Array<{ id: string; title: string; text: string }>) {
+  const results: Array<{
+    sectionId: string;
+    sectionTitle: string;
+    claim: string;
+    reason: string;
+    academicQuery: string;
+  }> = [];
+
+  const triggers = [
+    { regex: /\b(metode|algoritma|model|framework|pendekatan|arsitektur)\b/i, reason: "Pernyataan metodologi atau model membutuhkan rujukan sumber primer." },
+    { regex: /\b(penelitian terdahulu|menurut|berdasarkan studi|penelitian sebelumnya|dikemukakan oleh)\b/i, reason: "Pernyataan tinjauan pustaka membutuhkan sitasi nama peneliti dan tahun." },
+    { regex: /\b(teori|konsep|prinsip|paradigma)\b/i, reason: "Landasan teoritis membutuhkan rujukan pustaka ilmiah." },
+    { regex: /\b(\d+[\.,]?\d*\s*%|\d+\s+responden|\d+\s+sampel|secara signifikan|menunjukkan bahwa)\b/i, reason: "Klaim statistik atau temuan empiris memerlukan rujukan pendukung." },
+    { regex: /\b(merupakan salah satu|didefinisikan sebagai|adalah suatu)\b/i, reason: "Definisi konseptual memerlukan rujukan dari buku teks atau jurnal." }
+  ];
+
+  for (const s of sections) {
+    const sentences = s.text.split(/(?<=[.!?])\s+/);
+    for (const sent of sentences) {
+      const clean = sent.trim();
+      if (clean.length < 35 || clean.length > 280) continue;
+      if (/\(\s*[A-Z][a-z]+.*?\d{4}\s*\)|\[\d+\]|<sup/i.test(clean)) continue;
+      if (/^[#\*\-\d\.\)]/.test(clean)) continue;
+
+      for (const t of triggers) {
+        if (t.regex.test(clean)) {
+          const words = clean
+            .replace(/[^\w\s]/g, "")
+            .split(/\s+/)
+            .filter((w) => w.length > 3 && !/^(yang|untuk|dalam|pada|dengan|adalah|sebagai|dari|akan|dapat|oleh|atau|juga|serta|tidak|karena|pada|saat)$/i.test(w))
+            .slice(0, 5)
+            .join(" ");
+
+          results.push({
+            sectionId: s.id,
+            sectionTitle: s.title,
+            claim: clean,
+            reason: t.reason,
+            academicQuery: words || clean.slice(0, 60),
+          });
+          break;
+        }
+      }
+      if (results.length >= 8) break;
+    }
+    if (results.length >= 8) break;
+  }
+
+  return results;
+}
+
 export async function POST(req: NextRequest, { params }: Ctx) {
   const b = await req.json().catch(() => ({}));
   const scope: "all" | "chapter" | "section" = b.scope || "all";
@@ -67,7 +149,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       const chap = allSections[chapIndex];
       scopeLabel = chap.title;
       targetSections.push(chap);
-      // Masukkan semua sub-bab di bawahnya sampai bertemu Bab berikutnya (level 1)
       for (let i = chapIndex + 1; i < allSections.length; i++) {
         const next = allSections[i];
         if (next.level === 1) break;
@@ -76,13 +157,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  // Jika all atau fallback
   if (!targetSections.length) {
     targetSections = allSections.filter((s) => !/daftar pustaka|references?/i.test(s.title));
     scopeLabel = "Seluruh Dokumen";
   }
 
-  // Siapkan teks per section
   const prepared = targetSections
     .map((s) => ({
       id: s.id,
@@ -97,11 +176,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       scopeLabel,
       scannedCount: 0,
       opportunities: [],
-      message: "Tidak ada teks yang cukup untuk dipindai pada cakupan ini.",
+      message: "Tidak ada teks yang cukup untuk dipindai pada cakupan ini (minimal 20 karakter).",
     });
   }
 
-  // 1. Jalankan AI untuk mendeteksi klaim tanpa sitasi
   let rawOpportunities: Array<{
     sectionId: string;
     sectionTitle: string;
@@ -110,6 +188,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     academicQuery: string;
   }> = [];
 
+  let usedAi = false;
+  let notice: string | null = null;
+
+  // 1. Coba pindai dengan AI (jika API Key aktif)
   try {
     const { system, user } = citationScanMessages({
       project,
@@ -125,15 +207,28 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       { projectId: project.id, json: true }
     );
 
-    rawOpportunities = parseJsonArray(aiRes.content);
+    const parsed = parseOpportunitiesJson(aiRes.content);
+    if (parsed.length > 0) {
+      rawOpportunities = parsed;
+      usedAi = true;
+    }
   } catch (e: any) {
     if (e instanceof AIConfigError) {
-      return NextResponse.json({ error: "API Key AI belum diset. Silakan konfigurasi di menu Settings." }, { status: 400 });
+      notice = "Mode Cepat Heuristik (OpenAlex) aktif. Untuk pemindaian semantik mendalam, masukkan API Key (Gemini) di menu Settings.";
+    } else {
+      notice = `AI mengalami kendala (${e.message}). Beralih otomatis ke mode heuristik OpenAlex.`;
     }
-    return NextResponse.json({ error: `Gagal memindai teks: ${e.message}` }, { status: 500 });
   }
 
-  // 2. Untuk setiap peluang sitasi, cari jurnal ilmiah riil di OpenAlex / Crossref
+  // 2. Fallback Heuristik otomatis jika AI gagal atau API Key belum diset
+  if (!rawOpportunities.length) {
+    rawOpportunities = extractHeuristicClaims(prepared);
+    if (!notice) {
+      notice = "Hasil pemindaian otomatis berbasis heuristik akademik & OpenAlex.";
+    }
+  }
+
+  // 3. Cari jurnal riil pendukung di OpenAlex & Crossref
   const opportunities = await Promise.all(
     rawOpportunities.slice(0, 8).map(async (opp, idx) => {
       let papers: AcademicSource[] = [];
@@ -146,9 +241,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         });
         papers = results || [];
       } catch {
-        // Fallback: cari dengan frasa klaim singkat
         try {
-          const fallbackQuery = opp.claim.split(/\s+/).slice(0, 6).join(" ");
+          const fallbackQuery = opp.claim.split(/\s+/).slice(0, 5).join(" ");
           const { results } = await searchPapers({ query: fallbackQuery, limit: 3 });
           papers = results || [];
         } catch {
@@ -156,7 +250,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         }
       }
 
-      // Format rekomendasi jurnal
       const suggestedPapers = papers.slice(0, 2).map((p) => {
         const authors = p.authors || [];
         const inText = formatInText(authors, p.year, project.citationStyle);
@@ -191,6 +284,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     scopeLabel,
     scannedCount: targetSections.length,
     totalFound: opportunities.length,
+    usedAi,
+    notice,
     opportunities,
   });
 }
