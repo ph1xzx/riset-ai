@@ -38,6 +38,7 @@ CREATE TABLE "Settings" (
 -- 2. Project
 CREATE TABLE "Project" (
     "id" TEXT NOT NULL,
+    "userId" TEXT,
     "title" TEXT NOT NULL DEFAULT 'Untitled research',
     "type" TEXT NOT NULL DEFAULT 'Skripsi',
     "topic" TEXT NOT NULL DEFAULT '',
@@ -289,6 +290,7 @@ CREATE UNIQUE INDEX "ResearchMemory_projectId_key" ON "ResearchMemory"("projectI
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- Foreign Keys
+ALTER TABLE "Project" ADD CONSTRAINT "Project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ResearchMemory" ADD CONSTRAINT "ResearchMemory_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "Section" ADD CONSTRAINT "Section_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "Source" ADD CONSTRAINT "Source_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
