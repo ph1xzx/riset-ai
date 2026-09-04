@@ -89,11 +89,22 @@ async function runChecks(): Promise<Check[]> {
     checks.push({ name: "Supabase Storage", status: "warn", detail: "NEXT_PUBLIC_SUPABASE_URL / ANON_KEY belum di-set — upload file tidak akan jalan" });
   } else {
     try {
-      const r = await withTimeout(
+      let r = await withTimeout(
         fetch(`${sbUrl.replace(/\/$/, "")}/storage/v1/bucket/uploads`, { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } }),
         8000,
         "cek bucket"
       );
+      if (!r.ok) {
+        r = await withTimeout(
+          fetch(`${sbUrl.replace(/\/$/, "")}/storage/v1/object/list/uploads`, {
+            method: "POST",
+            headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ prefix: "", limit: 1 }),
+          }),
+          8000,
+          "cek bucket list"
+        );
+      }
       if (r.ok) checks.push({ name: "Supabase Storage", status: "ok", detail: "bucket 'uploads' ada dan dapat diakses" });
       else
         checks.push({
