@@ -7,6 +7,10 @@ const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-grotesk", 
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-plexmono", display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+  ),
   title: "Riset AI — Workspace Penelitian BYOK",
   description:
     "Workspace penulisan skripsi/tesis dengan AI: struktur custom pedoman kampus, editor AI dengan autocomplete, sitasi terverifikasi Crossref, generate gambar, cek penulisan, ekspor DOCX format kampus. BYOK — API key milikmu.",
