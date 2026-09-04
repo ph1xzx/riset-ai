@@ -6,6 +6,7 @@ import {
   MessageSquareText, BookOpen, ShieldCheck, Send, Loader2, ExternalLink, Trash2,
   FileSearch, ExternalLink as Ext, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
   FileCog, GraduationCap, ChevronDown, ChevronUp, Wand2, ImagePlus, Search, Sparkles,
+  X, PanelRightClose,
 } from "lucide-react";
 import { stripHtml, parseJsonArray } from "@/lib/json";
 import { uploadDocx } from "@/lib/upload";
@@ -17,6 +18,7 @@ type Props = {
   notify: (t: string) => void;
   onInsertImage: (sectionId: string, url: string, caption?: string) => void;
   onOpenImageSearch: (query: string, sectionId?: string) => void;
+  onClose?: () => void;
 };
 
 type Tab = "chat" | "sources" | "review";
@@ -36,7 +38,7 @@ function dispatchAction(action: string) {
   window.dispatchEvent(new CustomEvent("ws:action", { detail: { action } }));
 }
 
-export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch }: Props) {
+export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
   const [ctx, setCtx] = useState({ section: true, document: false, library: false, pdfs: false });
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -262,24 +264,35 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   return (
     <aside className="w-80 shrink-0 bg-white flex flex-col">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
-      <div className="flex border-b border-ink-100">
-        {(
-          [
-            ["chat", "AI Chat", MessageSquareText],
-            ["sources", "Sources", BookOpen],
-            ["review", "Review", ShieldCheck],
-          ] as [Tab, string, any][]
-        ).map(([t, label, Icon]) => (
+      <div className="flex items-center border-b border-ink-100">
+        <div className="flex-1 flex">
+          {(
+            [
+              ["chat", "AI Chat", MessageSquareText],
+              ["sources", "Sources", BookOpen],
+              ["review", "Review", ShieldCheck],
+            ] as [Tab, string, any][]
+          ).map(([t, label, Icon]) => (
+            <button
+              key={t}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                tab === t ? "border-brand-600 text-brand-700" : "border-transparent text-ink-400 hover:text-ink-600"
+              }`}
+              onClick={() => setTab(t)}
+            >
+              <Icon size={13} /> {label}
+            </button>
+          ))}
+        </div>
+        {onClose && (
           <button
-            key={t}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-              tab === t ? "border-brand-600 text-brand-700" : "border-transparent text-ink-400 hover:text-ink-600"
-            }`}
-            onClick={() => setTab(t)}
+            onClick={onClose}
+            title="Sembunyikan panel kanan"
+            className="px-3 py-2.5 text-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors border-l border-ink-100 shrink-0"
           >
-            <Icon size={13} /> {label}
+            <X size={15} />
           </button>
-        ))}
+        )}
       </div>
 
       {/* ===== CARD AKSI — klik → editor nge-scroll & BLOCK teks yang akan diganti ===== */}

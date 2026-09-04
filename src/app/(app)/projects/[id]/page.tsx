@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Download, Loader2, FileText, Trash2, Sliders, X, Check, PanelLeft, PanelRight, FolderArchive, ScrollText, ShieldCheck, Eye } from "lucide-react";
+import { Download, Loader2, FileText, Trash2, Sliders, X, Check, PanelLeft, PanelRight, FolderArchive, ScrollText, ShieldCheck, Eye, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
 import StructureTree from "@/components/workspace/StructureTree";
 import Editor from "@/components/workspace/Editor";
 import RightPanel from "@/components/workspace/RightPanel";
@@ -44,6 +44,20 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   const task = useTask();
   const pendingImage = useRef<{ sectionId: string; url: string; caption?: string } | null>(null);
   const pendingSearch = useRef<{ sectionId: string; query: string } | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    }
+    if (exportMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [exportMenuOpen]);
 
   // preferensi show/hide sidebar disimpan lokal
   useEffect(() => {
@@ -67,6 +81,22 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       localStorage.setItem("riset.sidebar", JSON.stringify(next));
     } catch {
       /* private mode dll */
+    }
+  }
+
+  function toggleZen() {
+    if (!showLeft && !showRight) {
+      setShowLeft(true);
+      setShowRight(true);
+      try {
+        localStorage.setItem("riset.sidebar", JSON.stringify({ left: true, right: true }));
+      } catch {}
+    } else {
+      setShowLeft(false);
+      setShowRight(false);
+      try {
+        localStorage.setItem("riset.sidebar", JSON.stringify({ left: false, right: false }));
+      } catch {}
     }
   }
 
@@ -384,17 +414,17 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
       {/* TENGAH: editor */}
       <div className="flex-1 min-w-0 flex flex-col border-r border-ink-200 bg-white">
-        <div className="h-14 border-b border-ink-100 flex items-center gap-3 px-4 shrink-0">
+        <div className="h-14 border-b border-ink-100 flex items-center gap-2.5 px-4 shrink-0">
           <button
-            className={`btn-ghost !px-2 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
+            className={`btn-ghost !px-2 shrink-0 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
             title={showLeft ? "Sembunyikan sidebar struktur" : "Tampilkan sidebar struktur"}
             onClick={() => toggleSidebar("left")}
           >
             <PanelLeft size={16} />
           </button>
-          <FileText size={16} className="text-ink-400" />
+          <FileText size={16} className="text-ink-400 shrink-0" />
           <input
-            className="flex-1 min-w-0 font-semibold text-[15px] bg-transparent focus:outline-none"
+            className="flex-1 min-w-[120px] font-semibold text-[15px] bg-transparent focus:outline-none truncate"
             value={project.title}
             onChange={(e) => {
               setProject({ ...project, title: e.target.value });
@@ -407,55 +437,126 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               }).then(load)
             }
           />
-          <span className="chip bg-ink-100 text-ink-600">{project.type}</span>
-          <div className="w-28 hidden lg:block">
+          <span className="chip bg-ink-100 text-ink-600 shrink-0">{project.type}</span>
+          <div className="w-24 hidden 2xl:block shrink-0">
             <div className="h-1.5 rounded-full bg-ink-100 overflow-hidden">
               <div className="h-full bg-brand-500" style={{ width: `${progress}%` }} />
             </div>
             <div className="text-[10px] text-ink-400 mt-0.5">{progress}% selesai</div>
           </div>
-          <button className="btn-outline" onClick={openFormat}>
-            <Sliders size={14} /> Format
-          </button>
+
           {mdDelta !== null && mdDelta > 0 && (
-            <span className="chip bg-amber-100 text-amber-700" title="Jumlah section yang berubah sejak export Markdown terakhir">
-              Δ {mdDelta} sejak export MD
+            <span className="chip bg-amber-100 text-amber-700 shrink-0" title="Jumlah section yang berubah sejak export Markdown terakhir">
+              Δ {mdDelta}
             </span>
           )}
-          <button className="btn-outline" onClick={exportMarkdown} disabled={busyExport} title="Export chapters/*.md + assets + manifest.json (ZIP)">
-            <FolderArchive size={14} /> Export MD
+
+          {/* Pengaturan Format & Pedoman */}
+          <button className="btn-outline shrink-0" onClick={openFormat} title="Pengaturan margin, font, dan spasi kampus">
+            <Sliders size={14} /> <span className="hidden sm:inline">Format</span>
           </button>
-          <button className="btn-outline" onClick={exportPdf} disabled={busyPdf} title="Export PDF (DOCX → LibreOffice)">
-            {busyPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Export PDF
+          <button className="btn-outline shrink-0" onClick={openTpl} title="Terapkan template pedoman penulisan">
+            <ScrollText size={14} /> <span className="hidden sm:inline">Template</span>
           </button>
-          <a
-            className="btn-outline"
-            href={`/projects/${params.id}/preview`}
-            target="_blank"
-            rel="noreferrer"
-            title="Pratinjau penuh ala Microsoft Word (halaman A4 + penomoran)"
-          >
-            <Eye size={14} /> Pratinjau
-          </a>
-          <button className="btn-outline" onClick={openTpl} title="Terapkan template pedoman penulisan">
-            <ScrollText size={14} /> Template
+          <button className="btn-outline shrink-0" onClick={runFormatCheck} title="Periksa kepatuhan format terhadap pedoman">
+            <ShieldCheck size={14} /> <span className="hidden sm:inline">Cek Format</span>
           </button>
-          <button className="btn-outline" onClick={runFormatCheck} title="Periksa kepatuhan format terhadap pedoman">
-            <ShieldCheck size={14} /> Cek Format
-          </button>
-          <button className="btn-outline" onClick={exportDocx} disabled={busyExport}>
-            {busyExport ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Export DOCX
-          </button>
-          <button className="btn-ghost text-rose-600 !px-2" onClick={deleteProject} title="Hapus proyek">
-            <Trash2 size={14} />
-          </button>
-          <button
-            className={`btn-ghost !px-2 ${showRight ? "text-brand-600" : "text-ink-400"}`}
-            title={showRight ? "Sembunyikan panel kanan (chat/sources/review)" : "Tampilkan panel kanan"}
-            onClick={() => toggleSidebar("right")}
-          >
-            <PanelRight size={16} />
-          </button>
+
+          {/* Dropdown Menu Export Bersih */}
+          <div className="relative shrink-0" ref={exportMenuRef}>
+            <button
+              className="btn-outline flex items-center gap-1.5"
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              disabled={busyExport || busyPdf}
+              title="Pilihan export skripsi (DOCX, PDF, Markdown, Pratinjau)"
+            >
+              {busyExport || busyPdf ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}
+              <span>Export</span>
+              <ChevronDown size={12} className={`transition-transform duration-200 ${exportMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-64 bg-white border border-ink-200 rounded-lg shadow-xl py-1 z-40 font-sans text-xs">
+                <button
+                  className="w-full px-3 py-2.5 text-left hover:bg-ink-50 flex items-center gap-2.5 transition-colors"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    exportDocx();
+                  }}
+                >
+                  <FileText size={16} className="text-brand-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-ink-900">Microsoft Word (.docx)</div>
+                    <div className="text-[10px] text-ink-400">Format resmi kampus, siap sidang</div>
+                  </div>
+                </button>
+                <button
+                  className="w-full px-3 py-2.5 text-left hover:bg-ink-50 flex items-center gap-2.5 transition-colors"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    exportPdf();
+                  }}
+                >
+                  <Download size={16} className="text-rose-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-ink-900">Dokumen PDF (.pdf)</div>
+                    <div className="text-[10px] text-ink-400">Konversi DOCX via LibreOffice</div>
+                  </div>
+                </button>
+                <button
+                  className="w-full px-3 py-2.5 text-left hover:bg-ink-50 flex items-center gap-2.5 transition-colors"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    exportMarkdown();
+                  }}
+                >
+                  <FolderArchive size={16} className="text-amber-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-ink-900">Markdown Package (.zip)</div>
+                    <div className="text-[10px] text-ink-400">chapters/*.md + assets + manifest</div>
+                  </div>
+                </button>
+                <div className="border-t border-ink-100 my-1" />
+                <a
+                  className="w-full px-3 py-2.5 text-left hover:bg-ink-50 flex items-center gap-2.5 transition-colors"
+                  href={`/projects/${params.id}/preview`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setExportMenuOpen(false)}
+                >
+                  <Eye size={16} className="text-ink-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-ink-900">Pratinjau Halaman Cetak</div>
+                    <div className="text-[10px] text-ink-400">Tampilan lembar A4 ala Word</div>
+                  </div>
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Area Kontrol Kanan — selalu ter-pinned dan tidak pernah terpotong */}
+          <div className="ml-auto flex items-center gap-1 shrink-0 pl-2 border-l border-ink-100">
+            <button
+              className={`btn-ghost !px-2 ${!showLeft && !showRight ? "text-brand-600 bg-brand-50" : "text-ink-400"}`}
+              title={!showLeft && !showRight ? "Keluar dari mode fokus" : "Mode fokus menulis (sembunyikan panel)"}
+              onClick={toggleZen}
+            >
+              {!showLeft && !showRight ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button className="btn-ghost text-rose-600 !px-2" onClick={deleteProject} title="Hapus proyek">
+              <Trash2 size={14} />
+            </button>
+            <button
+              className={`btn-ghost !px-2 ${showRight ? "text-brand-600" : "text-ink-400"}`}
+              title={showRight ? "Sembunyikan panel kanan (chat/sources/review)" : "Tampilkan panel kanan"}
+              onClick={() => toggleSidebar("right")}
+            >
+              <PanelRight size={16} />
+            </button>
+          </div>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto">
           {activeSection ? (
@@ -475,6 +576,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           notify={notify}
           onInsertImage={insertImageToSection}
           onOpenImageSearch={openImageSearch}
+          onClose={() => toggleSidebar("right")}
         />
       </div>
 
