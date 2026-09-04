@@ -1,15 +1,25 @@
 -- ============================================================
---  RISET-AI — SETUP LENGKAP SUPABASE (jalankan SEKALI di SQL Editor)
---  Isi: 1) Seluruh skema database (18 tabel + index)
---       2) Seed awal Settings (baris id=1)
---       3) Bucket storage "uploads" + policy akses
---  Jalankan di project BARU. Bagian seed & storage idempoten; bagian skema
---  bila diulang akan error "already exists" (tidak merusak apa pun).
---  Setelah ini TIDAK perlu `prisma db push` lagi.
+--  RISET-AI — RESET TOTAL & FRESH SETUP SUPABASE
+--  Isi: 
+--    1) Reset bersih schema public (drop semua tabel lama)
+--    2) Skema 18 tabel lengkap + index + foreign keys
+--    3) Seed awal Settings (baris id=1)
+--    4) Akun User bawaan: email 'v@.com' / password 'Thelust11'
+--    5) Bucket storage 'uploads' (Public) + Policy CRUD
 -- ============================================================
 
+-- ============ 0) RESET SCHEMA PUBLIC ============
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO anon;
+GRANT ALL ON SCHEMA public TO authenticated;
+GRANT ALL ON SCHEMA public TO service_role;
+
 -- ============ 1) SKEMA DATABASE ============
--- CreateTable
+
+-- 1. Settings
 CREATE TABLE "Settings" (
     "id" INTEGER NOT NULL DEFAULT 1,
     "provider" TEXT NOT NULL DEFAULT 'openai-compatible',
@@ -25,7 +35,7 @@ CREATE TABLE "Settings" (
     CONSTRAINT "Settings_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 2. Project
 CREATE TABLE "Project" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL DEFAULT 'Untitled research',
@@ -50,7 +60,7 @@ CREATE TABLE "Project" (
     CONSTRAINT "Project_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 3. ResearchMemory
 CREATE TABLE "ResearchMemory" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -74,7 +84,7 @@ CREATE TABLE "ResearchMemory" (
     CONSTRAINT "ResearchMemory_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 4. Section
 CREATE TABLE "Section" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -90,7 +100,7 @@ CREATE TABLE "Section" (
     CONSTRAINT "Section_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 5. Source
 CREATE TABLE "Source" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -114,7 +124,7 @@ CREATE TABLE "Source" (
     CONSTRAINT "Source_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 6. SourceChunk
 CREATE TABLE "SourceChunk" (
     "id" TEXT NOT NULL,
     "sourceId" TEXT NOT NULL,
@@ -125,7 +135,7 @@ CREATE TABLE "SourceChunk" (
     CONSTRAINT "SourceChunk_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 7. Collection
 CREATE TABLE "Collection" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -134,7 +144,7 @@ CREATE TABLE "Collection" (
     CONSTRAINT "Collection_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 8. CollectionSource
 CREATE TABLE "CollectionSource" (
     "collectionId" TEXT NOT NULL,
     "sourceId" TEXT NOT NULL,
@@ -142,7 +152,7 @@ CREATE TABLE "CollectionSource" (
     CONSTRAINT "CollectionSource_pkey" PRIMARY KEY ("collectionId","sourceId")
 );
 
--- CreateTable
+-- 9. Citation
 CREATE TABLE "Citation" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -161,7 +171,7 @@ CREATE TABLE "Citation" (
     CONSTRAINT "Citation_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 10. CitationUsage
 CREATE TABLE "CitationUsage" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -174,7 +184,7 @@ CREATE TABLE "CitationUsage" (
     CONSTRAINT "CitationUsage_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 11. ChatThread
 CREATE TABLE "ChatThread" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -184,7 +194,7 @@ CREATE TABLE "ChatThread" (
     CONSTRAINT "ChatThread_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 12. ChatMessage
 CREATE TABLE "ChatMessage" (
     "id" TEXT NOT NULL,
     "threadId" TEXT NOT NULL,
@@ -196,7 +206,7 @@ CREATE TABLE "ChatMessage" (
     CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 13. Review
 CREATE TABLE "Review" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -206,7 +216,7 @@ CREATE TABLE "Review" (
     CONSTRAINT "Review_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 14. ReviewIssue
 CREATE TABLE "ReviewIssue" (
     "id" TEXT NOT NULL,
     "reviewId" TEXT NOT NULL,
@@ -219,7 +229,7 @@ CREATE TABLE "ReviewIssue" (
     CONSTRAINT "ReviewIssue_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 15. AIRun
 CREATE TABLE "AIRun" (
     "id" TEXT NOT NULL,
     "projectId" TEXT,
@@ -235,7 +245,7 @@ CREATE TABLE "AIRun" (
     CONSTRAINT "AIRun_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 16. ExportJob
 CREATE TABLE "ExportJob" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
@@ -247,7 +257,7 @@ CREATE TABLE "ExportJob" (
     CONSTRAINT "ExportJob_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 17. WritingTemplate
 CREATE TABLE "WritingTemplate" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -261,7 +271,7 @@ CREATE TABLE "WritingTemplate" (
     CONSTRAINT "WritingTemplate_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- 18. User
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -274,90 +284,78 @@ CREATE TABLE "User" (
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
+-- Indexes
 CREATE UNIQUE INDEX "ResearchMemory_projectId_key" ON "ResearchMemory"("projectId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
--- AddForeignKey
+-- Foreign Keys
 ALTER TABLE "ResearchMemory" ADD CONSTRAINT "ResearchMemory_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Section" ADD CONSTRAINT "Section_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Source" ADD CONSTRAINT "Source_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "SourceChunk" ADD CONSTRAINT "SourceChunk_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "Source"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Collection" ADD CONSTRAINT "Collection_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CollectionSource" ADD CONSTRAINT "CollectionSource_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CollectionSource" ADD CONSTRAINT "CollectionSource_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "Source"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Citation" ADD CONSTRAINT "Citation_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Citation" ADD CONSTRAINT "Citation_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "Source"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CitationUsage" ADD CONSTRAINT "CitationUsage_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "CitationUsage" ADD CONSTRAINT "CitationUsage_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "Source"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ChatThread" ADD CONSTRAINT "ChatThread_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ChatThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Review" ADD CONSTRAINT "Review_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ReviewIssue" ADD CONSTRAINT "ReviewIssue_reviewId_fkey" FOREIGN KEY ("reviewId") REFERENCES "Review"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "AIRun" ADD CONSTRAINT "AIRun_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ExportJob" ADD CONSTRAINT "ExportJob_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 
 -- ============ 2) SEED AWAL ============
--- Baris Settings global (id=1) — diisi nanti lewat halaman /settings aplikasi
+-- Settings (id=1)
 INSERT INTO "Settings" ("id", "updatedAt") VALUES (1, now())
 ON CONFLICT ("id") DO NOTHING;
 
--- ============ 3) STORAGE: bucket uploads + policy ============
--- bucket publik (server mengambil file via URL saat parsing)
-insert into storage.buckets (id, name, public)
-values ('uploads', 'uploads', true)
-on conflict (id) do update set public = true;
+-- User bawaan: v@.com / Thelust11
+INSERT INTO "User" ("id", "email", "name", "university", "passwordHash", "createdAt", "lastLoginAt")
+VALUES (
+    'usr_default_vian',
+    'v@.com',
+    'Vian',
+    'Universitas',
+    'scrypt$31YXDM9iTjHP0sEw1uYiVg==$FX6nFSa4n2iF1k7utwnkQdULugYvjzkaXFcrfBq5Jgl0FAtbpskmRvvqYKGkgy/z7Be+R9azwOBtCVpPs8f8Fg==',
+    now(),
+    now()
+)
+ON CONFLICT ("email") DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash";
 
--- anon boleh INSERT ke bucket uploads (upload dari browser)
-create policy "riset_anon_insert" on storage.objects
-  for insert to anon
-  with check (bucket_id = 'uploads');
 
--- siapa pun boleh SELECT (baca) file di bucket uploads
-create policy "riset_public_read" on storage.objects
-  for select
-  using (bucket_id = 'uploads');
+-- ============ 3) STORAGE: BUCKET & POLICIES ============
+-- Buat bucket uploads jika belum ada
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('uploads', 'uploads', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
--- anon boleh UPDATE/menimpa (upsert saat re-upload nama sama)
-create policy "riset_anon_update" on storage.objects
-  for update to anon
-  using (bucket_id = 'uploads');
+-- Beri izin baca bucket ke anon & authenticated (agar health-check & listing jalan)
+GRANT SELECT ON storage.buckets TO anon;
+GRANT SELECT ON storage.buckets TO authenticated;
 
--- SELESAI. Verifikasi cepat:
---   select count(*) from information_schema.tables where table_schema='public';  -- harus 18
---   select * from storage.buckets;                                              -- ada 'uploads'
+DROP POLICY IF EXISTS "riset_anon_bucket_read" ON storage.buckets;
+CREATE POLICY "riset_anon_bucket_read" ON storage.buckets
+  FOR SELECT TO anon
+  USING (id = 'uploads');
+
+-- Izin INSERT ke bucket uploads (upload docx/gambar dari browser)
+DROP POLICY IF EXISTS "riset_anon_insert" ON storage.objects;
+CREATE POLICY "riset_anon_insert" ON storage.objects
+  FOR INSERT TO anon
+  WITH CHECK (bucket_id = 'uploads');
+
+-- Izin SELECT (baca publik)
+DROP POLICY IF EXISTS "riset_public_read" ON storage.objects;
+CREATE POLICY "riset_public_read" ON storage.objects
+  FOR SELECT
+  USING (bucket_id = 'uploads');
+
+-- Izin UPDATE (upsert file saat nama sama)
+DROP POLICY IF EXISTS "riset_anon_update" ON storage.objects;
+CREATE POLICY "riset_anon_update" ON storage.objects
+  FOR UPDATE TO anon
+  USING (bucket_id = 'uploads');

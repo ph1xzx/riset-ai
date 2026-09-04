@@ -1,18 +1,28 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function getCleanSupabaseConfig() {
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  if (!rawUrl || !rawKey) return null;
+  let cleanUrl = rawUrl.trim().replace(/\/+$/, "");
+  try {
+    const parsed = new URL(cleanUrl);
+    cleanUrl = `${parsed.protocol}//${parsed.host}`;
+  } catch {}
+  return { url: cleanUrl, key: rawKey.trim() };
+}
 
 /** Ada konfigurasi Supabase? (Vercel: ya; sandbox local: belum tentu) */
 export function supabaseConfigured(): boolean {
-  return Boolean(url && anon);
+  return Boolean(getCleanSupabaseConfig());
 }
 
 let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient | null {
-  if (!supabaseConfigured()) return null;
-  if (!client) client = createClient(url!, anon!, { auth: { persistSession: false } });
+  const conf = getCleanSupabaseConfig();
+  if (!conf) return null;
+  if (!client) client = createClient(conf.url, conf.key, { auth: { persistSession: false } });
   return client;
 }
 

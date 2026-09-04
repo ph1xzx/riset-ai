@@ -14,8 +14,13 @@ export async function uploadFile(file: File): Promise<string> {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (sbUrl && anon) {
+    let cleanUrl = sbUrl.trim().replace(/\/+$/, "");
+    try {
+      const parsed = new URL(cleanUrl);
+      cleanUrl = `${parsed.protocol}//${parsed.host}`;
+    } catch {}
     const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(sbUrl, anon, { auth: { persistSession: false } });
+    const sb = createClient(cleanUrl, anon.trim(), { auth: { persistSession: false } });
     const path = `imports/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const { error } = await sb.storage.from(BUCKET).upload(path, file, { upsert: true });
     if (error) throw new Error(`Upload ke Supabase gagal: ${error.message}`);

@@ -23,5 +23,5 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 export function validEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email || "");
+  return /^[^\s@]+@[^\s@]+$/.test(email || "") && (email || "").length >= 5;
 }
