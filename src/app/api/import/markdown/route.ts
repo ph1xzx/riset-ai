@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { DEFAULT_CAMPUS_STYLE } from "@/lib/research";
+import { getSessionUser } from "@/lib/auth-token";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -12,6 +13,7 @@ export const maxDuration = 120;
  * sehingga Export DOCX + editor bekerja tanpa perubahan.
  */
 export async function POST(req: NextRequest) {
+  const session = await getSessionUser(req);
   const b = await req.json();
   const sections: { title: string; level: number; html: string }[] = Array.isArray(b.sections)
     ? b.sections
@@ -20,6 +22,7 @@ export async function POST(req: NextRequest) {
 
   const project = await prisma.project.create({
     data: {
+      userId: session?.id || null,
       title: b.title || "Impor Markdown",
       type: b.type || "Skripsi (Markdown)",
       topic: b.title || "",

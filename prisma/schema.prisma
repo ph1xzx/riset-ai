@@ -24,6 +24,7 @@ model Settings {
 
 model Project {
   id              String   @id @default(cuid())
+  userId          String?
   title           String   @default("Untitled research")
   type            String   @default("Skripsi")
   topic           String   @default("")
@@ -53,6 +54,7 @@ model Project {
   usages      CitationUsage[]
   runs        AIRun[]
   exports     ExportJob[]
+  user        User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ResearchMemory {
@@ -272,4 +274,5 @@ model User {
   passwordHash String
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
+  projects     Project[]
 }

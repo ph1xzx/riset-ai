@@ -5,6 +5,7 @@ import { extractCampusStyle } from "@/lib/docx-style";
 import { fetchFileBytes } from "@/lib/storage";
 import { DEFAULT_CAMPUS_STYLE } from "@/lib/research";
 import { stripHtml } from "@/lib/json";
+import { getSessionUser } from "@/lib/auth-token";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -14,6 +15,7 @@ export const maxDuration = 120;
  * body: { fileUrl, title?, type? }
  */
 export async function POST(req: NextRequest) {
+  const session = await getSessionUser(req);
   const b = await req.json();
   const fileUrl: string = b.fileUrl;
   if (!fileUrl) return NextResponse.json({ error: "fileUrl wajib" }, { status: 400 });
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
 
     const project = await prisma.project.create({
       data: {
+        userId: session?.id || null,
         title,
         type: b.type || "Skripsi (Impor)",
         topic: doc.title,

@@ -8,6 +8,22 @@ export async function uploadDocx(file: File): Promise<string> {
   return uploadFile(file);
 }
 
+let cachedUserId: string | null = null;
+async function getCurrentUserId(): Promise<string> {
+  if (cachedUserId) return cachedUserId;
+  try {
+    const res = await fetch("/api/auth/me");
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.user?.id) {
+        cachedUserId = data.user.id;
+        return cachedUserId!;
+      }
+    }
+  } catch {}
+  return "general";
+}
+
 /** Upload generik (docx/pdf/gambar) — Supabase direct atau fallback /api/uploads. */
 export async function uploadFile(file: File): Promise<string> {
   const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,7 +37,9 @@ export async function uploadFile(file: File): Promise<string> {
     } catch {}
     const { createClient } = await import("@supabase/supabase-js");
     const sb = createClient(cleanUrl, anon.trim(), { auth: { persistSession: false } });
-    const path = `imports/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const userId = await getCurrentUserId();
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `users/${userId}/${Date.now()}-${safeName}`;
     const { error } = await sb.storage.from(BUCKET).upload(path, file, { upsert: true });
     if (error) throw new Error(`Upload ke Supabase gagal: ${error.message}`);
     const { data } = sb.storage.from(BUCKET).getPublicUrl(path);

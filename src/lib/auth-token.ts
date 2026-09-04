@@ -56,3 +56,12 @@ export async function verifyToken(token: string | undefined | null): Promise<Ses
     return null;
   }
 }
+
+export async function getSessionUser(
+  req: { cookies: { get(name: string): { value?: string } | undefined } }
+): Promise<{ id: string; email: string } | null> {
+  const token = req.cookies?.get(SESSION_COOKIE)?.value;
+  const payload = await verifyToken(token);
+  if (!payload?.sub) return null;
+  return { id: payload.sub, email: payload.email };
+}

@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { defaultStructure } from "@/lib/research";
 import { toJsonArray } from "@/lib/json";
+import { getSessionUser } from "@/lib/auth-token";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const session = await getSessionUser(req);
+  const where = session?.id
+    ? { OR: [{ userId: session.id }, { userId: null }] }
+    : {};
   const projects = await prisma.project.findMany({
+    where,
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { sections: true, sources: true } } },
   });
@@ -42,9 +48,11 @@ type CreateBody = {
 };
 
 export async function POST(req: NextRequest) {
+  const session = await getSessionUser(req);
   const b = (await req.json()) as CreateBody;
   const project = await prisma.project.create({
     data: {
+      userId: session?.id || null,
       title: b.title || b.topic || "Untitled research",
       type: b.type || "Skripsi",
       topic: b.topic || "",
