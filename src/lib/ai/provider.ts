@@ -10,7 +10,8 @@ export type AITask =
   | "figure_suggestions"
   | "ai_edit"
   | "chat"
-  | "review";
+  | "review"
+  | "citation_scan";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 

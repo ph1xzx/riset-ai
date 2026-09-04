@@ -2,10 +2,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Download, Loader2, FileText, Trash2, Sliders, X, Check, PanelLeft, PanelRight, FolderArchive, ScrollText, ShieldCheck, Eye, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
+import { Download, Loader2, FileText, Trash2, Sliders, X, Check, PanelLeft, PanelRight, FolderArchive, ScrollText, ShieldCheck, Eye, ChevronDown, Maximize2, Minimize2, Search } from "lucide-react";
 import StructureTree from "@/components/workspace/StructureTree";
 import Editor from "@/components/workspace/Editor";
 import RightPanel from "@/components/workspace/RightPanel";
+import CitationScanModal from "@/components/workspace/CitationScanModal";
 import { parseJsonObject } from "@/lib/json";
 import { DEFAULT_CAMPUS_STYLE } from "@/lib/research";
 import { buildMarkdownPackage } from "@/lib/markdown-package";
@@ -46,6 +47,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   const pendingSearch = useRef<{ sectionId: string; query: string } | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [citationScanOpen, setCitationScanOpen] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -97,6 +99,37 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       try {
         localStorage.setItem("riset.sidebar", JSON.stringify({ left: false, right: false }));
       } catch {}
+    }
+  }
+
+  async function handleInsertScannedCitation(sectionId: string, claim: string, citationText: string, metadata: any) {
+    const res = await fetch(`/api/projects/${params.id}/sources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metadata }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || "Gagal menyimpan sumber ke library");
+    }
+    const savedSource = await res.json();
+    load();
+
+    if (sectionId === activeId) {
+      window.dispatchEvent(
+        new CustomEvent("ws:action", {
+          detail: { action: "insert-citation", claim, citationText, sourceId: savedSource.id },
+        })
+      );
+    } else {
+      setActiveId(sectionId);
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("ws:action", {
+            detail: { action: "insert-citation", claim, citationText, sourceId: savedSource.id },
+          })
+        );
+      }, 250);
     }
   }
 
@@ -461,6 +494,13 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           <button className="btn-outline shrink-0" onClick={runFormatCheck} title="Periksa kepatuhan format terhadap pedoman">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Cek Format</span>
           </button>
+          <button
+            className="btn-outline shrink-0 text-brand-700 bg-brand-50/40 hover:bg-brand-50 border-brand-200"
+            onClick={() => setCitationScanOpen(true)}
+            title="Pindai naskah untuk mencari bagian tanpa sitasi & temukan jurnal yang cocok"
+          >
+            <Search size={14} className="text-brand-600" /> <span className="hidden sm:inline">Scan Sitasi</span>
+          </button>
 
           {/* Dropdown Menu Export Bersih */}
           <div className="relative shrink-0" ref={exportMenuRef}>
@@ -577,6 +617,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           onInsertImage={insertImageToSection}
           onOpenImageSearch={openImageSearch}
           onClose={() => toggleSidebar("right")}
+          onOpenCitationScan={() => setCitationScanOpen(true)}
         />
       </div>
 
@@ -740,6 +781,16 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
             ))}
           </div>
         </div>
+      )}
+
+      {citationScanOpen && (
+        <CitationScanModal
+          project={project}
+          isOpen={citationScanOpen}
+          onClose={() => setCitationScanOpen(false)}
+          onInsertCitation={handleInsertScannedCitation}
+          notify={notify}
+        />
       )}
 
       {toast && <div className="toast bg-ink-900">{toast}</div>}

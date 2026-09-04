@@ -19,6 +19,7 @@ type Props = {
   onInsertImage: (sectionId: string, url: string, caption?: string) => void;
   onOpenImageSearch: (query: string, sectionId?: string) => void;
   onClose?: () => void;
+  onOpenCitationScan?: () => void;
 };
 
 type Tab = "chat" | "sources" | "review";
@@ -38,7 +39,7 @@ function dispatchAction(action: string) {
   window.dispatchEvent(new CustomEvent("ws:action", { detail: { action } }));
 }
 
-export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch, onClose }: Props) {
+export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch, onClose, onOpenCitationScan }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
   const [ctx, setCtx] = useState({ section: true, document: false, library: false, pdfs: false });
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -459,6 +460,15 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
               {citeBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Cek Sitasi
             </button>
           </div>
+          {onOpenCitationScan && (
+            <button
+              className="btn-outline w-full justify-center !text-xs mt-2 border-brand-200 bg-brand-50/40 text-brand-700 hover:bg-brand-50 flex items-center gap-1.5"
+              onClick={onOpenCitationScan}
+            >
+              <Search size={13} className="text-brand-600" />
+              <span>Scan Peluang Sitasi (Pilih Bab / Semua)</span>
+            </button>
+          )}
           <button className="btn-primary w-full justify-center !text-xs mt-2" onClick={runFigures} disabled={figBusy}>
             {figBusy ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
             {figBusy ? "Menganalisa dokumen…" : "Saran Gambar"}

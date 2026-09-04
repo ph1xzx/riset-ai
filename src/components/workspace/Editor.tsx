@@ -233,6 +233,28 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
       setImgNote("");
       setImgLimit(null);
       setImgOpen(true);
+    } else if (action === "insert-citation") {
+      const d = detail as { claim?: string; citationText?: string; sourceId?: string } | undefined;
+      if (d?.sourceId && d?.citationText) {
+        const docText = ed.state.doc.textBetween(0, ed.state.doc.content.size, " ");
+        let inserted = false;
+        if (d.claim && docText.includes(d.claim.trim())) {
+          const targetClaim = d.claim.trim();
+          ed.state.doc.descendants((node, pos) => {
+            if (!inserted && node.isText && node.text && node.text.includes(targetClaim)) {
+              const idx = node.text.indexOf(targetClaim);
+              const targetPos = pos + idx + targetClaim.length;
+              ed.chain().focus().setTextSelection(targetPos).insertContent(` <sup class="citation" data-source-id="${d.sourceId}">${d.citationText}</sup>`).run();
+              inserted = true;
+              return false;
+            }
+          });
+        }
+        if (!inserted) {
+          ed.chain().focus().insertContent(` <sup class="citation" data-source-id="${d.sourceId}">${d.citationText}</sup>`).run();
+        }
+        onSaved();
+      }
     }
   };
   /* ---------------- gambar ---------------- */
