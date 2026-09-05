@@ -927,12 +927,16 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
   return (
     <div onKeyDown={keydown} className="h-full flex flex-col">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
-      {/* header section */}
-      <div className="px-4 pt-3 pb-2 border-b border-ink-100 bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-3 max-w-[72ch] mx-auto">
-          <h2 className="text-lg font-bold flex-1 min-w-0 truncate">{section.title}</h2>
+      {/* ribbon section: status and AI actions */}
+      <div className="px-3 sm:px-4 py-2 border-b border-ink-200 bg-ink-50/60 sticky top-0 z-10 overflow-x-auto [scrollbar-width:thin]">
+        <div className="flex items-center gap-1.5 min-w-max max-w-[84rem] mx-auto">
+          <div className="min-w-[170px] max-w-[28vw] shrink-0 pr-2">
+            <div className="text-[9px] font-mono uppercase tracking-[0.12em] text-ink-400 leading-none mb-1">Section aktif</div>
+            <h2 className="text-sm font-bold truncate">{section.title}</h2>
+          </div>
+          <span className="h-7 w-px bg-ink-200 shrink-0" />
           <button
-            className={`chip ${
+            className={`chip !h-7 ${
               st === "APPROVED"
                 ? "bg-emerald-100 text-emerald-700"
                 : st === "AI_DRAFT"
@@ -943,7 +947,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
             {STATUS_LABEL[st] ?? st}
           </button>
           <select
-            className="text-xs border border-ink-200 rounded-lg px-2 py-1 bg-white"
+            className="h-8 text-xs border border-ink-300 px-2 bg-white focus:outline-none focus:ring-1 focus:ring-brand-400"
             value={st}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -953,15 +957,16 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
             <option value="USER_EDITED">Edited</option>
             <option value="APPROVED">Approved</option>
           </select>
+          <span className="h-7 w-px bg-ink-200 shrink-0 mx-1" />
           <button className="btn-outline !py-1.5 text-xs" onClick={() => setPromptOpen(!promptOpen)}>
             Prompt
           </button>
-          <button className="btn-outline !py-1.5 text-xs" onClick={() => setHistoryOpen(true)} title="Lihat riwayat perubahan AI di browser ini">
+          <button className="btn-outline !h-8 !py-1.5 text-xs" onClick={() => setHistoryOpen(true)} title="Lihat riwayat perubahan AI di browser ini">
             <History size={13} /> <span className="hidden 2xl:inline">Riwayat AI</span>
           </button>
           <button
             type="button"
-            className={`btn-outline !py-1.5 text-xs ${styleInspectorOpen ? "bg-brand-50 text-brand-700 border-brand-200" : ""}`}
+            className={`btn-outline !h-8 !py-1.5 text-xs ${styleInspectorOpen ? "bg-brand-50 text-brand-700 border-brand-200" : ""}`}
             onClick={() => {
               setStyleInspectorOpen((open) => !open);
               if (editor) setStyleInfo(readStyleInfo(editor));
@@ -971,11 +976,13 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
           >
             <Search size={13} /> <span className="hidden 2xl:inline">Inspector</span>
           </button>
-          <button className="btn-outline !py-1.5 text-xs" onClick={() => paraphrase()} disabled={paraBusy} title="Tulis ulang section dengan kata-kata baru; sitasi dijaga">
+          <span className="h-7 w-px bg-ink-200 shrink-0 mx-1" />
+          <div className="text-[9px] font-mono uppercase tracking-[0.12em] text-ink-400 hidden xl:block shrink-0">AI editor</div>
+          <button className="btn-outline !h-8 !py-1.5 text-xs" onClick={() => paraphrase()} disabled={paraBusy} title="Tulis ulang section dengan kata-kata baru; sitasi dijaga">
             {paraBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
             Parafrase
           </button>
-          <button className="btn-primary !py-1.5 text-xs" onClick={generate} disabled={busyGen}>
+          <button className="btn-primary !h-8 !py-1.5 text-xs" onClick={generate} disabled={busyGen}>
             {busyGen ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             {busyGen ? "Generating…" : "Generate AI"}
           </button>

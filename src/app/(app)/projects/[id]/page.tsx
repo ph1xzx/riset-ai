@@ -594,31 +594,38 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
       {/* TENGAH: editor */}
       <div className="flex-1 min-w-0 flex flex-col border-r border-ink-200 bg-white">
-        <div className="h-12 border-b border-ink-100 flex items-center gap-2 px-3 shrink-0 overflow-x-auto">
+        <div className="h-14 border-b border-ink-200 bg-white flex items-center gap-2 px-2 sm:px-3 shrink-0 overflow-x-auto [scrollbar-width:thin]">
           <button
-            className={`btn-ghost !px-2 shrink-0 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
+            className={`btn-ghost !h-9 !w-9 !p-0 justify-center shrink-0 border border-transparent hover:border-ink-200 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
             title={showLeft ? "Sembunyikan sidebar struktur" : "Tampilkan sidebar struktur"}
             onClick={() => toggleSidebar("left")}
           >
             <PanelLeft size={16} />
           </button>
-          <FileText size={16} className="text-ink-400 shrink-0" />
-          <input
-            className="flex-1 min-w-[120px] font-semibold text-[15px] bg-transparent focus:outline-none truncate"
-            value={project.title}
-            onChange={(e) => {
-              setProject({ ...project, title: e.target.value });
-            }}
-            onBlur={(e) =>
-              fetch(`/api/projects/${params.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: e.target.value }),
-              }).then(load)
-            }
-          />
+          <span className="h-8 w-px bg-ink-200 shrink-0" />
+          <div className="flex items-center gap-2 min-w-[220px] max-w-[min(31vw,360px)] shrink-0">
+            <FileText size={16} className="text-brand-600 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[9px] font-mono uppercase tracking-[0.12em] text-ink-400 leading-none mb-1">Dokumen kerja</div>
+              <input
+                className="w-full min-w-0 font-semibold text-sm bg-transparent focus:outline-none truncate"
+                value={project.title}
+                aria-label="Judul dokumen"
+                onChange={(e) => {
+                  setProject({ ...project, title: e.target.value });
+                }}
+                onBlur={(e) =>
+                  fetch(`/api/projects/${params.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title: e.target.value }),
+                  }).then(load)
+                }
+              />
+            </div>
+          </div>
           <span className="chip bg-ink-100 text-ink-600 shrink-0">{project.type}</span>
-          <div className="w-24 hidden 2xl:block shrink-0">
+          <div className="w-24 hidden xl:block shrink-0 pl-1">
             <div className="h-1.5 rounded-full bg-ink-100 overflow-hidden">
               <div className="h-full bg-brand-500" style={{ width: `${progress}%` }} />
             </div>
@@ -631,21 +638,23 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
             </span>
           )}
 
-          {/* Pengaturan Format & Pedoman */}
-          <button className="btn-outline shrink-0" onClick={openFormat} title="Pengaturan margin, font, dan spasi kampus">
+          <span className="h-8 w-px bg-ink-200 shrink-0 mx-1" />
+
+          {/* Ribbon: perintah dokumen */}
+          <button className="btn-outline !h-9 shrink-0" onClick={openFormat} title="Pengaturan margin, font, dan spasi kampus">
             <Sliders size={14} /> <span className="hidden sm:inline">Format</span>
           </button>
-          <button className="btn-outline shrink-0" onClick={openTpl} title="Terapkan template pedoman penulisan">
+          <button className="btn-outline !h-9 shrink-0" onClick={openTpl} title="Terapkan template pedoman penulisan">
             <ScrollText size={14} /> <span className="hidden sm:inline">Template</span>
           </button>
-          <button className="btn-outline shrink-0" onClick={formatProjectTables} disabled={busyTables} title="Seragamkan header, kolom, dan baris seluruh tabel">
+          <button className="btn-outline !h-9 shrink-0" onClick={formatProjectTables} disabled={busyTables} title="Seragamkan header, kolom, dan baris seluruh tabel">
             {busyTables ? <Loader2 size={14} className="animate-spin" /> : <TableIcon size={14} />} <span className="hidden sm:inline">Rapikan Tabel</span>
           </button>
-          <button className="btn-outline shrink-0" onClick={runFormatCheck} title="Periksa kepatuhan format terhadap pedoman">
+          <button className="btn-outline !h-9 shrink-0" onClick={runFormatCheck} title="Periksa kepatuhan format terhadap pedoman">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Cek Format</span>
           </button>
           <button
-            className="btn-outline shrink-0 text-brand-700 bg-brand-50/40 hover:bg-brand-50 border-brand-200"
+            className="btn-outline !h-9 shrink-0 text-brand-700 bg-brand-50/40 hover:bg-brand-50 border-brand-200"
             onClick={() => setCitationScanOpen(true)}
             title="Pindai naskah untuk mencari bagian tanpa sitasi & temukan jurnal yang cocok"
           >
@@ -655,7 +664,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           {/* Dropdown Menu Export Bersih */}
           <div className="relative shrink-0" ref={exportMenuRef}>
             <button
-              className="btn-outline flex items-center gap-1.5"
+              className="btn-outline !h-9 flex items-center gap-1.5"
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
               disabled={busyExport || busyPdf || roundtripBusy}
               title="Pilihan export skripsi (DOCX, PDF, Markdown, Pratinjau)"
@@ -742,7 +751,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           </div>
 
               {/* Kontrol kanan tetap tersedia dan tidak terpotong. */}
-          <div className="ml-auto flex items-center gap-1 shrink-0 pl-2 border-l border-ink-100">
+          <div className="ml-auto flex items-center gap-1 shrink-0 pl-2 border-l border-ink-200">
             <button
               className={`btn-ghost !px-2 ${!showLeft && !showRight ? "text-brand-600 bg-brand-50" : "text-ink-400"}`}
               title={!showLeft && !showRight ? "Keluar dari mode fokus" : "Mode fokus menulis (sembunyikan panel)"}
