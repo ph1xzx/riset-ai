@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, FileSearch, Library, Settings, Plus, Upload, FlaskConical, ScrollText, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { LayoutDashboard, FileSearch, Library, Settings, Plus, Upload, FlaskConical, ScrollText, ChevronLeft, ChevronRight, LogOut, Menu, X } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -13,7 +13,7 @@ const NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-/* Sidebar gelap editorial — menyambung dengan side-menu panel landing
+/* Sidebar gelap editorial, menyambung dengan side-menu panel landing
    (#101114, teks bone, mono uppercase, hover #8db4ff).
    Mendukung mode collapsible (w-14 rail) agar ruang editor lebih luas. */
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -22,6 +22,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [aiReady, setAiReady] = useState<boolean | null>(null);
   const [me, setMe] = useState<{ email: string; name: string } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isCollapsed = collapsed && !mobileOpen;
 
   useEffect(() => {
     try {
@@ -53,6 +55,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [pathname]);
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -60,14 +73,41 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <header className="md:hidden sticky top-0 z-40 h-14 shrink-0 flex items-center justify-between border-b border-ink-200 bg-[#101114] px-4 text-[#fbfaf7]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 shrink-0 bg-[#3564ff] text-white flex items-center justify-center">
+            <FlaskConical size={18} />
+          </div>
+          <div className="font-display font-medium leading-none tracking-tight text-[17px]">
+            Riset<span className="font-light">AI</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-label={mobileOpen ? "Tutup navigasi" : "Buka navigasi"}
+          aria-expanded={mobileOpen}
+          onClick={() => setMobileOpen((open) => !open)}
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/75 hover:text-white"
+        >
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </header>
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Tutup navigasi"
+          className="md:hidden fixed inset-0 z-40 bg-black/45"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
       <aside
-        className={`shrink-0 bg-[#101114] text-[#fbfaf7] flex flex-col transition-all duration-200 ease-in-out ${
-          collapsed ? "w-14" : "w-60"
-        }`}
+        className={`shrink-0 bg-[#101114] text-[#fbfaf7] flex-col transition-all duration-200 ease-in-out ${
+          mobileOpen ? "fixed inset-y-0 left-0 z-50 flex w-60" : "hidden md:flex"
+        } ${isCollapsed ? "md:w-14" : "md:w-60"}`}
       >
         {/* Header brand + toggle */}
-        {collapsed ? (
+        {isCollapsed ? (
           <div className="flex flex-col items-center justify-center h-16 border-b border-white/10 relative group">
             <div className="w-8 h-8 rounded-none bg-[#3564ff] text-white flex items-center justify-center">
               <FlaskConical size={18} />
@@ -106,45 +146,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Nav list */}
-        <nav className={`flex-1 space-y-0.5 ${collapsed ? "p-2" : "p-3"}`}>
+        <nav className={`flex-1 space-y-0.5 ${isCollapsed ? "p-2" : "p-3"}`}>
           {NAV.map((n) => {
             const active = pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href));
             return (
               <Link
                 key={n.href}
                 href={n.href}
-                title={collapsed ? n.label : undefined}
+                title={isCollapsed ? n.label : undefined}
+                aria-current={active ? "page" : undefined}
+                onClick={() => setMobileOpen(false)}
                 className={`flex items-center rounded-none font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
-                  collapsed ? "justify-center py-2.5 px-0" : "gap-3 px-3 py-2"
+                  isCollapsed ? "justify-center py-2.5 px-0" : "gap-3 px-3 py-2"
                 } ${
                   active
                     ? "bg-white/10 text-[#8db4ff]"
                     : "text-white/55 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <n.icon size={collapsed ? 18 : 15} />
-                {!collapsed && <span>{n.label}</span>}
+                <n.icon size={isCollapsed ? 18 : 15} />
+                {!isCollapsed && <span>{n.label}</span>}
               </Link>
             );
           })}
           <Link
             href="/new"
-            title={collapsed ? "Proyek Baru" : undefined}
+            title={isCollapsed ? "Proyek Baru" : undefined}
+            onClick={() => setMobileOpen(false)}
             className={`mt-2 flex items-center justify-center rounded-none border font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
-              collapsed ? "py-2.5 px-0" : "gap-2 px-3 py-2"
+              isCollapsed ? "justify-center py-2.5 px-0" : "gap-2 px-3 py-2"
             } ${
               pathname.startsWith("/new")
                 ? "border-[#8db4ff] text-[#8db4ff]"
                 : "border-[#3564ff] bg-[#3564ff] text-white hover:bg-transparent hover:text-[#3564ff]"
             }`}
           >
-            <Plus size={collapsed ? 18 : 15} />
-            {!collapsed && <span>Proyek Baru</span>}
+            <Plus size={isCollapsed ? 18 : 15} />
+            {!isCollapsed && <span>Proyek Baru</span>}
           </Link>
         </nav>
 
         {/* Footer status & logout */}
-        {collapsed ? (
+        {isCollapsed ? (
           <div className="p-2 border-t border-white/10 flex flex-col items-center gap-3">
             <span
               title={aiReady === null ? "Memeriksa AI…" : aiReady ? "API key aktif" : "API key belum diset"}
@@ -161,8 +204,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <LogOut size={16} />
               </button>
             )}
-            <button
-              onClick={toggleCollapsed}
+              <button
+                onClick={toggleCollapsed}
               title="Perluas sidebar"
               className="text-white/40 hover:text-white p-1 transition-colors"
             >

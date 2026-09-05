@@ -11,6 +11,22 @@ body {
   @apply bg-bone-50 text-ink-900 antialiased;
 }
 
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #3564ff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ---------- editor ---------- */
 .tiptap {
   @apply outline-none min-h-[60vh] px-8 py-6;
@@ -70,7 +86,7 @@ body {
 /* ---------- ui bits ---------- */
 /* ---------- komponen app: gaya editorial menyambung landing ----------
    sudut tegas, border hairline, aksen #3564ff (= brand-500), label mono
-   uppercase — sama seperti kelas .mkt-* di halaman publik. */
+   uppercase, sama seperti kelas .mkt-* di halaman publik. */
 .card {
   @apply bg-white rounded-none border border-ink-200 shadow-none;
 }
@@ -99,7 +115,22 @@ body {
   @apply fixed bottom-5 right-5 z-[100] rounded-lg px-4 py-3 text-sm shadow-lg text-white;
 }
 
-/* ================= TEMA PUBLIK (landing/login/register) — editorial ================= */
+@media (max-width: 767px) {
+  .btn,
+  .input,
+  select.input,
+  textarea.input {
+    min-height: 44px;
+  }
+
+  .toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ================= TEMA PUBLIK (landing/login/register), editorial ================= */
 /* Terinspirasi pola desain serotoninn.com (tema saja, bukan salinan): header
    mix-blend-difference mengambang, logo di tengah, side-menu panel gelap dengan
    reveal scaleX/scaleY + kolom art, tipografi hairline-first-letter. */

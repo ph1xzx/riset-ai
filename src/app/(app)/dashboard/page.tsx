@@ -15,19 +15,26 @@ type Project = {
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const load = () => {
+    setError("");
+    setLoading(true);
     fetch("/api/projects")
-      .then((r) => r.json())
-      .then((j) => setProjects(j))
-      .catch(() => {})
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(j?.error || "Proyek belum bisa dimuat.");
+        return j;
+      })
+      .then((j) => setProjects(Array.isArray(j) ? j : []))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-end justify-between mb-6">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400 mb-1.5">
             Workspace
@@ -36,7 +43,7 @@ export default function Dashboard() {
             Proyek <span className="font-light">Penelitian</span>
           </h1>
           <p className="text-sm text-ink-500 mt-1">
-            Alur proyek terstruktur (ala Mantra) + workspace penulisan AI (ala Jenni) — dengan API key kamu.
+            Kelola struktur penelitian, sumber, dan naskah dalam satu workspace dengan API key milikmu.
           </p>
         </div>
         <div className="flex gap-2">
@@ -49,7 +56,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <div className="card p-8 text-center" role="alert">
+          <div className="font-semibold mb-1">Dashboard belum bisa dibuka</div>
+          <p className="text-sm text-ink-500 mb-4">{error}</p>
+          <button type="button" className="btn-outline" onClick={load}>Coba lagi</button>
+        </div>
+      ) : loading ? (
         <div className="text-ink-400 text-sm py-20 text-center">Memuat…</div>
       ) : projects.length === 0 ? (
         <div className="card p-12 text-center">

@@ -95,9 +95,10 @@ export default function NewProjectPage() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
-      setProjectId(j.id);
+      const id = j.id as string;
+      setProjectId(id);
       setStep(4);
-      runBrainstorm();
+      runBrainstorm(id);
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -105,14 +106,18 @@ export default function NewProjectPage() {
     }
   }
 
-  async function runBrainstorm() {
+  async function runBrainstorm(id = projectId) {
+    if (!id) {
+      setErr("Proyek belum siap untuk brainstorming. Coba ulangi pembuatan proyek.");
+      return;
+    }
     setTitles(null);
     setErr("");
     setBusy(true);
     task.start("Brainstorm judul", undefined, "Mengirim topik ke model AI…", true);
     try {
       task.log("Model sedang meracik kandidat judul + metode (30–90 detik)…");
-      const res = await fetch(`/api/projects/${projectId}/brainstorm`, { method: "POST", signal: task.signal() });
+      const res = await fetch(`/api/projects/${id}/brainstorm`, { method: "POST", signal: task.signal() });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
       task.log(`${j.titles?.length || 0} kandidat judul siap.`);
@@ -166,15 +171,15 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
-      <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-start gap-2 mb-6">
         {step > 1 && (
           <button className="btn-ghost !px-2" onClick={() => setStep(step - 1)}>
             <ArrowLeft size={16} />
           </button>
         )}
-        <div className="flex items-center gap-1.5 text-xs text-ink-400">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-400">
           {["Tipe & Topik", "Metode & Sitasi", "Pedoman (opsional)", "Brainstorming Judul"].map((s, i) => (
             <span key={s} className={`chip ${i + 1 === step ? "bg-brand-600 text-white" : i + 1 < step ? "bg-emerald-100 text-emerald-700" : "bg-ink-100 text-ink-500"}`}>
               {i + 1}. {s}
@@ -210,7 +215,7 @@ export default function NewProjectPage() {
             <div className="label">Topik penelitian *</div>
             <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="cth: sistem pendukung keputusan pemilihan e-wallet terbaik" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="label">Bidang</div>
               <input className="input" value={field} onChange={(e) => setField(e.target.value)} placeholder="Informatika, Manajemen, Kesehatan…" />
@@ -224,7 +229,7 @@ export default function NewProjectPage() {
               <input className="input" value={caseStudy} onChange={(e) => setCaseStudy(e.target.value)} placeholder="Bank X, RSUD Y…" />
             </div>
             <div>
-              <div className="label">Judul (opsional — nanti bisa dari brainstorm)</div>
+              <div className="label">Judul (opsional, nanti bisa dari brainstorm)</div>
               <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
           </div>
@@ -268,7 +273,7 @@ export default function NewProjectPage() {
             {method === "Custom" && (
               <input className="input mt-2" value={customMethod} onChange={(e) => setCustomMethod(e.target.value)} placeholder="Nama metode custom…" />
             )}
-            <div className="text-[11px] text-ink-400 mt-1.5">Metode tidak hardcode per bidang — bebas apa pun.</div>
+            <div className="text-[11px] text-ink-400 mt-1.5">Metode tidak hardcode per bidang, bebas apa pun.</div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -289,7 +294,7 @@ export default function NewProjectPage() {
                 ))}
               </select>
             </div>
-            <div className="col-span-2 grid grid-cols-3 gap-4">
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="label">Tahun dari</div>
                 <input className="input" value={yearFrom} onChange={(e) => setYearFrom(e.target.value)} />
@@ -303,7 +308,7 @@ export default function NewProjectPage() {
                 <input className="input" value={minCitations} onChange={(e) => setMinCitations(e.target.value)} placeholder="0" />
               </div>
             </div>
-            <label className="col-span-2 flex items-center gap-2 text-sm text-ink-600">
+            <label className="sm:col-span-2 flex items-center gap-2 text-sm text-ink-600">
               <input type="checkbox" checked={preprint} onChange={(e) => setPreprint(e.target.checked)} /> Include preprint
             </label>
           </div>
@@ -340,7 +345,7 @@ export default function NewProjectPage() {
             <div className="border border-ink-200 rounded-lg p-3 bg-ink-50 space-y-2">
               <div className="text-xs font-semibold text-ink-500">ATAU PAKAI TEMPLATE PEDOMAN TERSIMPAN</div>
               <select className="input" value={tplId} onChange={(e) => setTplId(e.target.value)}>
-                <option value="">— Tanpa template —</option>
+                <option value="">Tanpa template</option>
                 {tpls.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -356,7 +361,7 @@ export default function NewProjectPage() {
                       ? `margin ${c.margins?.top}/${c.margins?.right}/${c.margins?.bottom}/${c.margins?.left} cm • ${c.body?.font} ${c.body?.size}pt • spasi ${c.body?.lineSpacing} • indent ${c.body?.firstLineIndentMm} mm • sitasi ${c.citationStyle}`
                       : "";
                   })()}
-                  {guide && " — template menimpa format file pedoman di atas."}
+                  {guide && "Template menimpa format file pedoman di atas."}
                 </div>
               )}
             </div>
@@ -397,17 +402,22 @@ export default function NewProjectPage() {
       {/* STEP 4 */}
       {step === 4 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-xl font-bold flex items-center gap-2">
               <Sparkles size={20} className="text-brand-600" /> Brainstorming Judul
             </h1>
-            <button className="btn-ghost" onClick={runBrainstorm} disabled={busy}>
+            <button className="btn-ghost" onClick={() => runBrainstorm()} disabled={busy}>
               {busy ? <Loader2 size={15} className="animate-spin" /> : "Ulangi"}
             </button>
           </div>
           <p className="text-sm text-ink-500 -mt-2">Pilih 1 → proyek langsung pakai judul + ResearchMemory + struktur.</p>
 
-          {busy && !titles && <div className="card p-10 text-center text-ink-400 text-sm flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> AI menyusun 5 alternatif judul…</div>}
+          {busy && !titles && <div className="card p-10 text-center text-ink-400 text-sm flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> AI menyusun alternatif judul…</div>}
+          {!busy && !titles && !err && (
+            <div className="card p-8 text-center text-sm text-ink-500">
+              Belum ada alternatif judul. <button type="button" className="text-brand-700 font-semibold underline" onClick={() => runBrainstorm()}>Coba lagi</button>.
+            </div>
+          )}
           {err && <div className="rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3">{err}</div>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -434,7 +444,7 @@ export default function NewProjectPage() {
           </div>
           <div className="text-center">
             <button className="btn-ghost" onClick={() => router.push(`/projects/${projectId}`)} disabled={busy}>
-              Lewati — langsung ke editor
+              Lewati, langsung ke editor
             </button>
           </div>
         </div>

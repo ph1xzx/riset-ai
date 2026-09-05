@@ -27,6 +27,8 @@ export type ProjectData = any;
 export default function ProjectPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [project, setProject] = useState<ProjectData | null>(null);
+  const [projectLoading, setProjectLoading] = useState(true);
+  const [projectError, setProjectError] = useState("");
   const [activeId, setActiveId] = useState<string>("");
   const [busyExport, setBusyExport] = useState(false);
   const [toast, setToast] = useState("");
@@ -72,6 +74,13 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       }
     } catch {
       /* pakai default */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setShowLeft(false);
+      setShowRight(false);
     }
   }, []);
   function toggleSidebar(side: "left" | "right") {
@@ -140,15 +149,22 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
   async function saveFormat() {
     setFmtBusy(true);
-    await fetch(`/api/projects/${params.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ campusStyle: fmt }),
-    });
-    setFmtBusy(false);
-    setFormatOpen(false);
-    load();
-    notify("Format kampus disimpan — dipakai saat Export DOCX.");
+    try {
+      const res = await fetch(`/api/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campusStyle: fmt }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(j?.error || "Format belum bisa disimpan.");
+      setFormatOpen(false);
+      load();
+      notify("Format kampus disimpan dan akan dipakai saat export DOCX.");
+    } catch (e: any) {
+      notify(e.message);
+    } finally {
+      setFmtBusy(false);
+    }
   }
 
   const notify = (t: string) => {
@@ -157,16 +173,23 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   };
 
   const load = useCallback(() => {
+    setProjectError("");
     fetch(`/api/projects/${params.id}`)
       .then((r) => {
-        if (!r.ok) throw new Error("not found");
+        if (r.status === 404) {
+          setProject({ __nf: true });
+          return null;
+        }
+        if (!r.ok) throw new Error("Proyek belum bisa dimuat.");
         return r.json();
       })
       .then((j) => {
+        if (!j) return;
         setProject(j);
         setActiveId((cur) => cur || j.sections?.[0]?.id || "");
       })
-      .catch(() => setProject({ __nf: true }));
+      .catch((e: Error) => setProjectError(e.message))
+      .finally(() => setProjectLoading(false));
   }, [params.id]);
 
   useEffect(load, [load]);
@@ -231,6 +254,18 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     }
   }, [activeSection?.id]);
 
+  if (!project && projectError) {
+    return (
+      <div className="p-10 text-center" role="alert">
+        <p className="text-ink-600 font-semibold">Proyek belum bisa dimuat</p>
+        <p className="text-sm text-ink-500 mt-1">{projectError}</p>
+        <div className="flex justify-center gap-2 mt-4">
+          <button type="button" className="btn-outline" onClick={load}>Coba lagi</button>
+          <Link href="/dashboard" className="btn-primary">Ke Dashboard</Link>
+        </div>
+      </div>
+    );
+  }
   if (project?.__nf) {
     return (
       <div className="p-10 text-center">
@@ -241,7 +276,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
-  if (!project) {
+  if (!project || projectLoading) {
     return (
       <div className="flex items-center justify-center h-screen text-ink-400 gap-2">
         <Loader2 className="animate-spin" size={18} /> Memuat proyek…
@@ -250,27 +285,42 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   }
 
   async function patchSection(id: string, data: object) {
-    await fetch(`/api/sections/${id}`, {
+    const res = await fetch(`/api/sections/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      notify(j?.error || "Perubahan section belum tersimpan.");
+      return;
+    }
     load();
   }
 
   async function addSection(level: number) {
     const n = project.sections.length;
-    await fetch(`/api/projects/${params.id}/sections`, {
+    const res = await fetch(`/api/projects/${params.id}/sections`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: level === 2 ? "Sub-bab baru" : `BAB ${n}`, level }),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      notify(j?.error || "Section baru belum bisa dibuat.");
+      return;
+    }
     load();
   }
 
   async function delSection(id: string) {
     if (!confirm("Hapus section ini beserta isinya?")) return;
-    await fetch(`/api/sections/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/sections/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      notify(j?.error || "Section belum bisa dihapus.");
+      return;
+    }
     setActiveId("");
     load();
   }
@@ -279,11 +329,16 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     const idx = project.sections.findIndex((s: any) => s.id === sectionId);
     const target = idx + dir;
     if (target < 0 || target >= project.sections.length) return;
-    await fetch(`/api/sections/${params.id}`, {
+    const res = await fetch(`/api/sections/${params.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId: params.id, sectionId, targetIndex: target }),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      notify(j?.error || "Urutan section belum bisa diubah.");
+      return;
+    }
     load();
   }
 
@@ -304,8 +359,8 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       a.download = `${project.title.slice(0, 40).replace(/\s+/g, "-")}.docx`;
       a.click();
       URL.revokeObjectURL(a.href);
-      task.log("Selesai — DOCX terunduh.");
-      notify("DOCX diunduh — format mengikuti template pedoman yang aktif.");
+      task.log("Selesai, DOCX terunduh.");
+      notify("DOCX diunduh. Format mengikuti template pedoman yang aktif.");
     } catch (e: any) {
       notify(e.message);
     } finally {
@@ -320,7 +375,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     try {
       task.log("Mengumpulkan gambar & membundel aset ke zip…");
       const { bytes, manifest } = await buildMarkdownPackage(project);
-      task.log(`${manifest.chapters.length} chapter + ${manifest.required_assets.length} aset siap — mengunduh…`);
+      task.log(`${manifest.chapters.length} chapter + ${manifest.required_assets.length} aset siap, mengunduh…`);
       const blob = new Blob([bytes as unknown as BlobPart], { type: "application/zip" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -339,7 +394,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       }
       notify(
         missing
-          ? `Paket Markdown diunduh — ${missing} aset TIDAK bisa dibundel (URL web), tetap direferensikan di .md.`
+          ? `Paket Markdown diunduh. ${missing} aset tidak bisa dibundel (URL web), tetap direferensikan di .md.`
           : "Paket Markdown diunduh: chapters/*.md + assets/* + manifest.json."
       );
     } catch (e: any) {
@@ -367,7 +422,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       a.download = `${project.title.slice(0, 40).replace(/\s+/g, "-")}.pdf`;
       a.click();
       URL.revokeObjectURL(a.href);
-      notify("PDF diunduh — isi & format sama dengan Export DOCX.");
+      notify("PDF diunduh. Isi dan format sama dengan Export DOCX.");
     } catch (e: any) {
       notify(e.message);
     } finally {
@@ -394,7 +449,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       if (!res.ok) throw new Error(j.error);
       const c = j.campusStyle;
       notify(
-        `Template "${name}" diterapkan — export DOCX/PDF mengikuti pedoman (margin ${c.margins?.top}/${c.margins?.right}/${c.margins?.bottom}/${c.margins?.left} cm, ${c.body?.font} ${c.body?.size}pt, spasi ${c.body?.lineSpacing}).` +
+        `Template "${name}" diterapkan. Export DOCX/PDF mengikuti pedoman (margin ${c.margins?.top}/${c.margins?.right}/${c.margins?.bottom}/${c.margins?.left} cm, ${c.body?.font} ${c.body?.size}pt, spasi ${c.body?.lineSpacing}).` +
           (reformat ? ` ${j.reformatted} section ikut dirapikan (judul BAB, titik, baris kosong).` : "")
       );
       setShowTpl(false);
@@ -433,7 +488,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     <div className="flex h-screen overflow-hidden">
       {task.task && <TaskOverlay task={task.task} />}
       {/* KIRI: struktur (show/hide) */}
-      <div className={showLeft ? "flex" : "hidden"}>
+      <div className={showLeft ? "fixed inset-y-0 left-0 z-30 flex bg-white shadow-xl md:static md:z-auto md:shadow-none" : "hidden"}>
         <StructureTree
           project={project}
           activeId={activeSection?.id}
@@ -447,7 +502,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
       {/* TENGAH: editor */}
       <div className="flex-1 min-w-0 flex flex-col border-r border-ink-200 bg-white">
-        <div className="h-14 border-b border-ink-100 flex items-center gap-2.5 px-4 shrink-0">
+        <div className="h-14 border-b border-ink-100 flex items-center gap-2.5 px-4 shrink-0 overflow-x-auto">
           <button
             className={`btn-ghost !px-2 shrink-0 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
             title={showLeft ? "Sembunyikan sidebar struktur" : "Tampilkan sidebar struktur"}
@@ -577,7 +632,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
             )}
           </div>
 
-          {/* Area Kontrol Kanan — selalu ter-pinned dan tidak pernah terpotong */}
+              {/* Kontrol kanan tetap tersedia dan tidak terpotong. */}
           <div className="ml-auto flex items-center gap-1 shrink-0 pl-2 border-l border-ink-100">
             <button
               className={`btn-ghost !px-2 ${!showLeft && !showRight ? "text-brand-600 bg-brand-50" : "text-ink-400"}`}
@@ -608,7 +663,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* KANAN: chat/library/review (show/hide) */}
-      <div className={showRight ? "flex" : "hidden"}>
+      <div className={showRight ? "fixed inset-y-0 right-0 z-30 flex bg-white shadow-xl md:static md:z-auto md:shadow-none" : "hidden"}>
         <RightPanel
           project={project}
           activeSectionId={activeSection?.id}
@@ -717,7 +772,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               </button>
             </div>
             <p className="text-xs text-gray-500">
-              Format proyek (margin, font, spasi, indentasi, heading, sitasi) diganti mengikuti template — berlaku untuk
+              Format proyek (margin, font, spasi, indentasi, heading, sitasi) diganti mengikuti template. Berlaku untuk
               proyek baru maupun hasil impor.
             </p>
             <label className="flex items-start gap-2 text-sm border rounded-lg p-3 bg-amber-50/60 cursor-pointer">
@@ -746,7 +801,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
             ))}
             {!tpls.length && (
               <div className="text-sm text-gray-400 border border-dashed rounded-lg p-4 text-center">
-                Belum ada template tersimpan — buat dulu di halaman Template Pedoman.
+                Belum ada template tersimpan. Buat dulu di halaman Template Pedoman.
               </div>
             )}
             <a href="/templates" className="text-xs text-blue-600 hover:underline">
