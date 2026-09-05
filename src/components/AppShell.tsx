@@ -1,21 +1,34 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { LayoutDashboard, FileSearch, Library, Settings, Plus, Upload, FlaskConical, ScrollText, ChevronLeft, ChevronRight, LogOut, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import {
+  LayoutDashboard,
+  FileSearch,
+  Library,
+  Settings,
+  Plus,
+  Upload,
+  FlaskConical,
+  ScrollText,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Menu,
+  X,
+  Search,
+} from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/find-papers", label: "Find Papers", icon: FileSearch },
-  { href: "/library", label: "Library", icon: Library },
-  { href: "/import", label: "Impor Skripsi", icon: Upload },
-  { href: "/templates", label: "Template Pedoman", icon: ScrollText },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/find-papers", label: "Cari Paper", icon: FileSearch },
+  { href: "/library", label: "Pustaka", icon: Library },
+  { href: "/import", label: "Impor", icon: Upload },
+  { href: "/templates", label: "Template", icon: ScrollText },
+  { href: "/settings", label: "Pengaturan", icon: Settings },
 ];
 
-/* Sidebar gelap editorial, menyambung dengan side-menu panel landing
-   (#101114, teks bone, mono uppercase, hover #8db4ff).
-   Mendukung mode collapsible (w-14 rail) agar ruang editor lebih luas. */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -23,31 +36,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<{ email: string; name: string } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const isCollapsed = collapsed && !mobileOpen;
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("riset.shell.collapsed");
-      if (saved !== null) {
-        setCollapsed(saved === "true");
-      }
+      setCollapsed(localStorage.getItem("riset.shell.compact") === "true");
     } catch {}
   }, []);
-
-  function toggleCollapsed() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("riset.shell.collapsed", String(next));
-      } catch {}
-      return next;
-    });
-  }
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
-      .then((j) => setAiReady(j.configured))
+      .then((j) => setAiReady(Boolean(j.configured)))
       .catch(() => setAiReady(false));
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
@@ -66,6 +68,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("riset.shell.compact", String(next));
+      } catch {}
+      return next;
+    });
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const q = search.trim().toLowerCase();
+    if (!q) return;
+    const target = q.includes("paper") || q.includes("jurnal")
+      ? "/find-papers"
+      : q.includes("template") || q.includes("pedoman")
+      ? "/templates"
+      : q.includes("impor") || q.includes("docx")
+      ? "/import"
+      : q.includes("setting") || q.includes("pengaturan")
+      ? "/settings"
+      : q.includes("baru") || q.includes("proyek")
+      ? "/new"
+      : "/dashboard";
+    setSearch("");
+    router.push(target);
+  }
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -73,171 +115,133 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <header className="md:hidden sticky top-0 z-40 h-14 shrink-0 flex items-center justify-between border-b border-ink-200 bg-[#101114] px-4 text-[#fbfaf7]">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 shrink-0 bg-[#3564ff] text-white flex items-center justify-center">
-            <FlaskConical size={18} />
-          </div>
-          <div className="font-display font-medium leading-none tracking-tight text-[17px]">
-            Riset<span className="font-light">AI</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          aria-label={mobileOpen ? "Tutup navigasi" : "Buka navigasi"}
-          aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen((open) => !open)}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-white/75 hover:text-white"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </header>
-      {mobileOpen && (
-        <button
-          type="button"
-          aria-label="Tutup navigasi"
-          className="md:hidden fixed inset-0 z-40 bg-black/45"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <aside
-        className={`shrink-0 bg-[#101114] text-[#fbfaf7] flex-col transition-all duration-200 ease-in-out ${
-          mobileOpen ? "fixed inset-y-0 left-0 z-50 flex w-60" : "hidden md:flex"
-        } ${isCollapsed ? "md:w-14" : "md:w-56"}`}
-      >
-        {/* Header brand + toggle */}
-        {isCollapsed ? (
-          <div className="flex flex-col items-center justify-center h-16 border-b border-white/10 relative group">
-            <div className="w-8 h-8 rounded-none bg-[#3564ff] text-white flex items-center justify-center">
-              <FlaskConical size={18} />
-            </div>
-            <button
-              onClick={toggleCollapsed}
-              title="Perluas sidebar"
-              className="absolute inset-0 flex items-center justify-center bg-[#101114]/90 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-[#8db4ff] transition-opacity"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 shrink-0 rounded-none bg-[#3564ff] text-white flex items-center justify-center">
-                <FlaskConical size={18} />
-              </div>
-              <div className="min-w-0">
-                <div className="font-display font-medium leading-none tracking-tight text-[17px]">
-                  Riset<span className="font-light">AI</span>
-                </div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/40 mt-0.5">
-                  BYOK workspace
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={toggleCollapsed}
-              title="Ciutkan sidebar"
-              className="text-white/40 hover:text-white p-1 rounded transition-colors"
-            >
-              <ChevronLeft size={16} />
-            </button>
-          </div>
-        )}
-
-        {/* Nav list */}
-        <nav className={`flex-1 space-y-0.5 ${isCollapsed ? "p-2" : "p-2.5"}`}>
-          {NAV.map((n) => {
-            const active = pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href));
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                title={isCollapsed ? n.label : undefined}
-                aria-current={active ? "page" : undefined}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center rounded-none font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
-                  isCollapsed ? "justify-center py-2.5 px-0" : "gap-3 px-3 py-2"
-                } ${
-                  active
-                    ? "bg-white/10 text-[#8db4ff]"
-                    : "text-white/55 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <n.icon size={isCollapsed ? 18 : 15} />
-                {!isCollapsed && <span>{n.label}</span>}
-              </Link>
-            );
-          })}
-          <Link
-            href="/new"
-            title={isCollapsed ? "Proyek Baru" : undefined}
-            onClick={() => setMobileOpen(false)}
-            className={`mt-2 flex items-center justify-center rounded-none border font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
-              isCollapsed ? "justify-center py-2.5 px-0" : "gap-2 px-3 py-2"
-            } ${
-              pathname.startsWith("/new")
-                ? "border-[#8db4ff] text-[#8db4ff]"
-                : "border-[#3564ff] bg-[#3564ff] text-white hover:bg-transparent hover:text-[#3564ff]"
-            }`}
-          >
-            <Plus size={isCollapsed ? 18 : 15} />
-            {!isCollapsed && <span>Proyek Baru</span>}
+    <div className="min-h-screen bg-[#f6f7f9] text-ink-900">
+      <header className="sticky top-0 z-40 h-14 shrink-0 bg-white border-b border-ink-200 flex items-center px-3 sm:px-4">
+        <div className="flex items-center gap-2.5 md:w-48 lg:w-52 shrink-0 min-w-0">
+          <Link href="/dashboard" className="w-8 h-8 shrink-0 bg-brand-600 text-white flex items-center justify-center" aria-label="Riset AI, Dashboard">
+            <FlaskConical size={17} />
           </Link>
-        </nav>
+          <Link href="/dashboard" className="font-display text-[16px] font-semibold tracking-tight truncate">
+            Riset <span className="font-normal text-ink-500">AI</span>
+          </Link>
+        </div>
 
-        {/* Footer status & logout */}
-        {isCollapsed ? (
-          <div className="p-2 border-t border-white/10 flex flex-col items-center gap-3">
-            <span
-              title={aiReady === null ? "Memeriksa AI…" : aiReady ? "API key aktif" : "API key belum diset"}
-              className={`w-2.5 h-2.5 rounded-full ${
-                aiReady === null ? "bg-white/30" : aiReady ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-            />
-            {me && (
-              <button
-                onClick={logout}
-                title={`Keluar (${me.email})`}
-                className="text-white/40 hover:text-[#ff9a9a] p-1 transition-colors"
-              >
-                <LogOut size={16} />
-              </button>
-            )}
-              <button
-                onClick={toggleCollapsed}
-              title="Perluas sidebar"
-              className="text-white/40 hover:text-white p-1 transition-colors"
+        <form onSubmit={submitSearch} className="hidden md:flex items-center w-full max-w-sm h-8 border border-ink-200 bg-ink-50/40 text-ink-500">
+          <Search size={14} className="ml-2.5 shrink-0" />
+          <input
+            ref={searchRef}
+            className="min-w-0 flex-1 bg-transparent px-2 text-xs text-ink-800 outline-none"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Cari di Riset AI"
+            aria-label="Cari di Riset AI"
+          />
+          <kbd className="mr-2 font-mono text-[9px] text-ink-400">Ctrl + K</kbd>
+        </form>
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-1.5 mr-1 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-400">
+            <span className={`w-1.5 h-1.5 rounded-full ${aiReady === null ? "bg-ink-300" : aiReady ? "bg-emerald-500" : "bg-amber-500"}`} />
+            {aiReady === null ? "Memeriksa" : aiReady ? "AI siap" : "API belum diset"}
+          </div>
+          <Link href="/settings" className="min-h-9 min-w-9 inline-flex items-center justify-center text-ink-500 hover:bg-ink-50 hover:text-ink-900" aria-label="Buka pengaturan" title="Pengaturan">
+            <Settings size={16} />
+          </Link>
+          <button
+            type="button"
+            aria-label={mobileOpen ? "Tutup navigasi" : "Buka navigasi"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((open) => !open)}
+            className="md:hidden min-h-9 min-w-9 inline-flex items-center justify-center text-ink-600 hover:bg-ink-50"
+          >
+            {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
+        </div>
+      </header>
+
+      <div className="flex min-h-[calc(100vh-3.5rem)]">
+        {mobileOpen && (
+          <button
+            type="button"
+            aria-label="Tutup navigasi"
+            className="md:hidden fixed inset-0 top-14 z-40 bg-ink-950/25"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        <aside
+          className={`shrink-0 bg-white border-r border-ink-200 flex-col transition-[width,transform] duration-200 ease-in-out ${
+            mobileOpen ? "fixed inset-y-14 left-0 z-50 flex w-60" : "hidden md:flex"
+          } ${isCollapsed ? "md:w-14" : "md:w-48 lg:w-52"}`}
+        >
+          <div className={`flex items-center border-b border-ink-100 ${isCollapsed ? "justify-center px-2" : "justify-between px-3"} h-12`}>
+            {!isCollapsed && <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">Workspace</span>}
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              title={isCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+              aria-label={isCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+              className="hidden md:inline-flex min-h-9 min-w-9 items-center justify-center text-ink-400 hover:bg-ink-50 hover:text-ink-900"
             >
-              <ChevronRight size={16} />
+              {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
             </button>
           </div>
-        ) : (
-          <div className="p-3 border-t border-white/10">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/50">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  aiReady === null ? "bg-white/30" : aiReady ? "bg-emerald-400" : "bg-amber-400"
-                }`}
-              />
-              {aiReady === null ? "Memeriksa AI…" : aiReady ? "API key aktif" : "API key belum diset"}
-            </div>
-            <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/30 mt-1.5 truncate">
-              {me ? me.email : "Sesi lokal"}
-            </div>
+
+          <nav className={`flex-1 space-y-0.5 ${isCollapsed ? "p-2" : "p-2.5"}`} aria-label="Navigasi utama">
+            {NAV.map((item) => {
+              const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={isCollapsed ? item.label : undefined}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center min-h-10 border-l-2 font-medium text-xs transition-colors ${
+                    isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"
+                  } ${active ? "border-brand-600 bg-brand-50 text-brand-700" : "border-transparent text-ink-500 hover:bg-ink-50 hover:text-ink-900"}`}
+                >
+                  <Icon size={15} />
+                  {!isCollapsed && <span>{item.label}</span>}
+                </Link>
+              );
+            })}
+            <Link
+              href="/new"
+              onClick={() => setMobileOpen(false)}
+              title={isCollapsed ? "Proyek Baru" : undefined}
+              className={`mt-3 flex items-center min-h-10 justify-center border font-medium text-xs transition-colors ${
+                isCollapsed ? "px-0 border-brand-200 text-brand-700" : "gap-2 px-2.5 border-brand-600 bg-brand-600 text-white hover:bg-brand-700"
+              }`}
+            >
+              <Plus size={15} />
+              {!isCollapsed && <span>Proyek Baru</span>}
+            </Link>
+          </nav>
+
+          <div className={`border-t border-ink-100 ${isCollapsed ? "p-2" : "p-3"}`}>
+            {!isCollapsed && (
+              <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-400 truncate" title={me?.email}>
+                {me ? me.email : "Sesi lokal"}
+              </div>
+            )}
             {me && (
               <button
+                type="button"
                 onClick={logout}
-                className="mt-2 w-full text-left font-mono text-[10px] uppercase tracking-[0.12em] text-white/45 hover:text-[#ff9a9a] transition-colors"
+                title="Keluar"
+                className={`mt-1.5 flex items-center min-h-9 text-xs text-ink-400 hover:text-rose-600 ${isCollapsed ? "justify-center w-full" : "gap-2"}`}
               >
-                Keluar →
+                <LogOut size={14} />
+                {!isCollapsed && <span>Keluar</span>}
               </button>
             )}
           </div>
-        )}
-      </aside>
+        </aside>
 
-      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+        <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+      </div>
     </div>
   );
 }

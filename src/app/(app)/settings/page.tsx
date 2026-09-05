@@ -62,7 +62,7 @@ export default function SettingsPage() {
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Settings — BYOK</h1>
+        <h1 className="text-xl font-bold">Settings · BYOK</h1>
         <p className="text-sm text-ink-500 mt-1">
           Bring Your Own API Key. Semua panggilan AI memakai provider pilihanmu; aplikasi tidak memakai key/akun siapa pun.
         </p>

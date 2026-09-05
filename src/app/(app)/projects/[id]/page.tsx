@@ -577,7 +577,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   const projectFormatLocked = Boolean((parseJsonObject(project.campusStyle, {}) as any).formatLocked);
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] md:h-[100dvh] overflow-hidden">
+    <div className="flex h-[calc(100dvh-3.5rem)] overflow-hidden">
       {task.task && <TaskOverlay task={task.task} />}
       {/* KIRI: struktur (show/hide) */}
       <div className={showLeft ? "fixed inset-y-0 left-0 z-30 flex bg-white shadow-xl md:static md:z-auto md:shadow-none" : "hidden"}>

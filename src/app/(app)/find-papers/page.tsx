@@ -110,7 +110,7 @@ export default function FindPapersPage() {
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
       <div className="mb-4">
-        <h1 className="text-2xl font-bold">Find Papers</h1>
+        <h1 className="text-xl font-bold">Find Papers</h1>
         <p className="text-sm text-ink-500 mt-1">
           Pencarian 200M+ paper via <b>OpenAlex + Crossref</b> (gratis, tanpa key). Simpan ke Library proyek →
           sumber itu yang boleh dipakai AI untuk sitasi (citation safety).
@@ -163,9 +163,13 @@ export default function FindPapersPage() {
         <div className="card p-8 text-center text-ink-500 text-sm">Tidak ada hasil. Coba kata kunci lain.</div>
       )}
 
-      <div className="space-y-2">
+      <div className="card overflow-hidden">
+        <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px] gap-3 px-4 py-2 bg-ink-50 border-b border-ink-100 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-400">
+          <span>Paper</span><span>Tahun dan sitasi</span><span className="text-right">Aksi</span>
+        </div>
+        <div className="divide-y divide-ink-100">
         {results.map((p) => (
-          <div key={p.id} className="card p-3">
+          <div key={p.id} className="p-3 sm:px-4 hover:bg-brand-50/30">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="font-semibold text-[15px] leading-snug">
@@ -197,6 +201,7 @@ export default function FindPapersPage() {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       {!searched && (

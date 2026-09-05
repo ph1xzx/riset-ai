@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Plus, Upload, BookOpenCheck, Clock, FileText } from "lucide-react";
+import { Plus, Upload, BookOpenCheck, Clock, FileText, ArrowUpRight, Search, ScrollText } from "lucide-react";
 
 type Project = {
   id: string;
@@ -39,7 +39,7 @@ export default function Dashboard() {
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400 mb-1.5">
             Workspace
           </div>
-          <h1 className="font-display text-3xl font-medium tracking-tight">
+          <h1 className="font-display text-2xl font-medium tracking-tight">
             Proyek <span className="font-light">Penelitian</span>
           </h1>
           <p className="text-sm text-ink-500 mt-1">
@@ -81,28 +81,51 @@ export default function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {projects.map((p) => (
-            <Link key={p.id} href={`/projects/${p.id}`} className="card p-4 hover:border-ink-500 transition-colors group">
-              <div className="flex items-start justify-between gap-2">
-                <div className="font-semibold group-hover:text-brand-600 line-clamp-2">{p.title}</div>
-                <FileText size={16} className="text-ink-300 shrink-0" />
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_250px] gap-3">
+          <section className="card overflow-hidden" aria-labelledby="projects-title">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-ink-100">
+              <div>
+                <h2 id="projects-title" className="font-semibold text-sm">Proyek kerja</h2>
+                <p className="text-[11px] text-ink-400 mt-0.5">Buka naskah terakhir dan lanjutkan dari struktur yang tersimpan.</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <span className="chip bg-ink-950 text-bone-50">{p.type}</span>
-                {p.method && <span className="chip bg-ink-100 text-ink-600">{p.method}</span>}
+              <span className="font-mono text-[10px] uppercase tracking-wide text-ink-400">{projects.length} proyek</span>
+            </div>
+            <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_110px_120px_130px] gap-3 px-4 py-2 bg-ink-50 border-b border-ink-100 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-400">
+              <span>Proyek</span><span>Tipe</span><span>Isi</span><span>Terakhir diubah</span>
+            </div>
+            <div className="divide-y divide-ink-100">
+              {projects.map((p) => (
+                <Link key={p.id} href={`/projects/${p.id}`} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_110px_120px_130px] gap-1 sm:gap-3 px-4 py-3 hover:bg-brand-50/40 transition-colors group">
+                  <div className="min-w-0 flex items-start gap-2">
+                    <FileText size={15} className="text-ink-300 shrink-0 mt-0.5" />
+                    <span className="font-medium text-sm truncate group-hover:text-brand-700" title={p.title}>{p.title}</span>
+                  </div>
+                  <div className="text-[11px] text-ink-500 sm:pt-0.5">{p.type}</div>
+                  <div className="font-mono text-[10px] uppercase tracking-wide text-ink-400 sm:pt-0.5">{p._count.sections} section · {p._count.sources} sumber</div>
+                  <div className="flex items-center gap-1 text-[11px] text-ink-500 sm:pt-0.5"><Clock size={12} />{new Date(p.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</div>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <aside className="space-y-3">
+            <div className="card p-4">
+              <div className="font-semibold text-sm mb-2">Langkah berikutnya</div>
+              <div className="space-y-1">
+                <Link href="/new" className="flex items-center justify-between gap-2 border border-ink-100 px-3 py-2.5 text-xs hover:border-brand-300 hover:bg-brand-50/40"><span className="flex items-center gap-2"><Plus size={14} className="text-brand-600" />Buat proyek baru</span><ArrowUpRight size={13} /></Link>
+                <Link href="/import" className="flex items-center justify-between gap-2 border border-ink-100 px-3 py-2.5 text-xs hover:border-brand-300 hover:bg-brand-50/40"><span className="flex items-center gap-2"><Upload size={14} className="text-brand-600" />Impor DOCX</span><ArrowUpRight size={13} /></Link>
+                <Link href="/find-papers" className="flex items-center justify-between gap-2 border border-ink-100 px-3 py-2.5 text-xs hover:border-brand-300 hover:bg-brand-50/40"><span className="flex items-center gap-2"><Search size={14} className="text-brand-600" />Cari sumber</span><ArrowUpRight size={13} /></Link>
               </div>
-              <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-ink-500">
-                <span>
-                  {p._count.sections} section • {p._count.sources} sumber
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={12} />
-                  {new Date(p.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                </span>
+            </div>
+            <div className="card p-4">
+              <div className="font-semibold text-sm mb-2">Akses cepat</div>
+              <div className="space-y-2 text-xs text-ink-500">
+                <Link href="/templates" className="flex items-center gap-2 hover:text-brand-700"><ScrollText size={14} />Template pedoman</Link>
+                <Link href="/library" className="flex items-center gap-2 hover:text-brand-700"><BookOpenCheck size={14} />Library sumber</Link>
+                <Link href="/settings" className="flex items-center gap-2 hover:text-brand-700">Atur provider dan API key</Link>
               </div>
-            </Link>
-          ))}
+            </div>
+          </aside>
         </div>
       )}
     </div>

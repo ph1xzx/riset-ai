@@ -322,40 +322,38 @@ export default function TemplatesPage() {
       {/* ===== TEMPLATE TERSIMPAN ===== */}
       <div className="space-y-3">
         <div className="font-semibold">Template tersimpan</div>
-        {tpls.map((t) => (
-          <div key={t.id} className="card p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="font-semibold">{t.name}</div>
-                <div className="text-xs text-gray-500">
-                  {[t.prodi, t.university].filter(Boolean).join(", ") || "Tanpa prodi/universitas"}
-                  {t.hasSource && " • teks pedoman tersimpan"}
-                </div>
-              </div>
-              <div className="flex gap-1.5">
-                <button className="btn-outline !px-2 !py-1" onClick={() => tweakSaved(t)} title="Sesuaikan per-aturan">
-                  <Pencil size={14} />
-                </button>
-                <button className="btn-outline !px-2 !py-1" onClick={() => remove(t.id, t.name)} title="Hapus">
-                  <Trash2 size={14} />
-                </button>
-              </div>
+        {tpls.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_110px_100px_76px] gap-3 px-4 py-2 bg-ink-50 border-b border-ink-100 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-400">
+              <span>Template</span><span>Jenis</span><span>Format</span><span className="text-right">Aksi</span>
             </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className="chip bg-gray-100">
-                margin {t.config.margins?.top}/{t.config.margins?.right}/{t.config.margins?.bottom}/{t.config.margins?.left} cm
-              </span>
-              <span className="chip bg-gray-100">
-                {t.config.body?.font} {t.config.body?.size}pt spasi {t.config.body?.lineSpacing}
-              </span>
-              <span className="chip bg-gray-100">indent {t.config.body?.firstLineIndentMm} mm</span>
-              <span className="chip bg-gray-100">sitasi {t.config.citationStyle}</span>
-              <span className="chip bg-gray-100">
-                halaman awal {t.config.pageNumbering?.front === "lowerRoman" ? "romawi" : "arab"}
-              </span>
+            <div className="divide-y divide-ink-100">
+              {tpls.map((t) => (
+                <div key={t.id} className="p-3 sm:px-4 flex items-start justify-between gap-3 hover:bg-brand-50/30">
+                  <div className="min-w-0 flex-1 sm:grid sm:grid-cols-[minmax(0,1fr)_110px_100px] sm:gap-3 sm:items-start">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{t.name}</div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {[t.prodi, t.university].filter(Boolean).join(", ") || "Tanpa prodi atau universitas"}
+                        {t.hasSource && " · teks pedoman tersimpan"}
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-ink-500 mt-1 sm:mt-0">{t.config?.pageSize || "A4"} · {t.config?.citationStyle || "APA7"}</div>
+                    <div className="text-[11px] text-ink-500 mt-1 sm:mt-0">{t.config.body?.font} {t.config.body?.size}pt · {t.config.body?.lineSpacing}</div>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button className="btn-outline !px-2" onClick={() => tweakSaved(t)} title="Sesuaikan per-aturan" aria-label={`Sesuaikan ${t.name}`}>
+                      <Pencil size={14} />
+                    </button>
+                    <button className="btn-outline !px-2 text-rose-600" onClick={() => remove(t.id, t.name)} title="Hapus" aria-label={`Hapus ${t.name}`}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        )}
         {!tpls.length && (
           <div className="text-sm text-gray-400 border border-dashed rounded-lg p-6 text-center">
             Belum ada template tersimpan. Pakai salah satu saran di atas.

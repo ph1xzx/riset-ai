@@ -88,7 +88,7 @@ export default function LibraryPage() {
     <div className="p-4 sm:p-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-bold">Library</h1>
+          <h1 className="text-xl font-bold">Library</h1>
           <p className="text-sm text-ink-500 mt-1">
             Sumber terverifikasi per proyek, satu-satunya sumber yang boleh disitasi AI.
           </p>
@@ -121,10 +121,14 @@ export default function LibraryPage() {
           Belum ada sumber. Cari paper di <Link className="text-brand-600 underline" href="/find-papers">Find Papers</Link>.
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="card overflow-hidden">
+          <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_84px] gap-3 px-4 py-2 bg-ink-50 border-b border-ink-100 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-400">
+            <span>Judul dan penulis</span><span>Jurnal dan metadata</span><span className="text-right">Aksi</span>
+          </div>
+          <div className="divide-y divide-ink-100">
           {sources.map((s) => (
-            <div key={s.id} className="card p-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div key={s.id} className="p-3 sm:px-4 flex items-start justify-between gap-3 hover:bg-brand-50/30">
+              <div className="min-w-0 flex-1 sm:grid sm:grid-cols-2 sm:gap-3">
                 <div className="font-medium text-[15px] line-clamp-1">{s.title}</div>
                 <div className="text-xs text-ink-500 mt-0.5">
                   {parseAuthors(s.authors)} • {s.journal || "s.t."} • {s.year ?? "s.t."} • {s.citationCount} sitasi • via {s.provider}
@@ -142,6 +146,7 @@ export default function LibraryPage() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>

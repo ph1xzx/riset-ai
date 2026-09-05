@@ -194,54 +194,70 @@ export default function NewProjectPage() {
 
       {/* STEP 1 */}
       {step === 1 && (
-        <div className="card p-4 sm:p-5 space-y-4">
-          <h1 className="text-xl font-bold">Tipe & Topik Penelitian</h1>
-          <div>
-            <div className="label">Tipe</div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              {PROJECT_TYPES.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setType(t.id)}
-                  className={`rounded-lg border p-3 text-left text-sm transition-colors ${
-                    type === t.id ? "border-brand-500 bg-brand-50" : "border-ink-200 hover:border-ink-300"
-                  }`}
-                >
-                  <div className="font-semibold">{t.id}</div>
-                  <div className="text-[11px] text-ink-500 mt-0.5">{t.desc}</div>
-                </button>
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_270px] gap-3">
+          <div className="card p-4 sm:p-5 space-y-4">
+            <h1 className="text-xl font-bold">Tipe & Topik Penelitian</h1>
+            <div>
+              <div className="label">Tipe</div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {PROJECT_TYPES.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setType(t.id)}
+                    className={`border p-3 text-left text-sm transition-colors ${
+                      type === t.id ? "border-brand-500 bg-brand-50" : "border-ink-200 hover:border-ink-300"
+                    }`}
+                  >
+                    <div className="font-semibold">{t.id}</div>
+                    <div className="text-[11px] text-ink-500 mt-0.5">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="label">Topik penelitian *</div>
+              <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="cth: sistem pendukung keputusan pemilihan e-wallet terbaik" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div className="label">Bidang</div>
+                <input className="input" value={field} onChange={(e) => setField(e.target.value)} placeholder="Informatika, Manajemen, Kesehatan…" />
+              </div>
+              <div>
+                <div className="label">Objek penelitian</div>
+                <input className="input" value={object} onChange={(e) => setObject(e.target.value)} placeholder="Metode AHP-TOPSIS, algoritma CNN…" />
+              </div>
+              <div>
+                <div className="label">Studi kasus</div>
+                <input className="input" value={caseStudy} onChange={(e) => setCaseStudy(e.target.value)} placeholder="Bank X, RSUD Y…" />
+              </div>
+              <div>
+                <div className="label">Judul (opsional)</div>
+                <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bisa diisi dari brainstorm" />
+              </div>
+            </div>
+            <div>
+              <div className="label">Masalah awal</div>
+              <textarea className="input" rows={3} value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="Kesenjangan atau masalah yang ingin diselesaikan…" />
+            </div>
+            <button className="btn-primary" onClick={() => setStep(2)} disabled={busy}>
+              Lanjut <ArrowRight size={15} />
+            </button>
+          </div>
+
+          <aside className="card p-4 h-fit">
+            <div className="font-semibold text-sm">Pratinjau struktur</div>
+            <p className="text-[11px] text-ink-500 mt-1">Struktur awal akan menyesuaikan tipe dan bisa diganti memakai pedoman kampus.</p>
+            <div className="mt-3 border border-ink-100 divide-y divide-ink-100">
+              {["BAB I PENDAHULUAN", "BAB II LANDASAN TEORI", "BAB III METODOLOGI", "BAB IV HASIL DAN PEMBAHASAN", "BAB V PENUTUP"].map((item, index) => (
+                <div key={item} className="flex items-center gap-2 px-2.5 py-2 text-[11px]">
+                  <span className="font-mono text-[9px] text-ink-400">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="font-medium">{item}</span>
+                </div>
               ))}
             </div>
-          </div>
-          <div>
-            <div className="label">Topik penelitian *</div>
-            <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="cth: sistem pendukung keputusan pemilihan e-wallet terbaik" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <div className="label">Bidang</div>
-              <input className="input" value={field} onChange={(e) => setField(e.target.value)} placeholder="Informatika, Manajemen, Kesehatan…" />
-            </div>
-            <div>
-              <div className="label">Objek penelitian</div>
-              <input className="input" value={object} onChange={(e) => setObject(e.target.value)} placeholder="Metode AHP-TOPSIS, algoritma CNN…" />
-            </div>
-            <div>
-              <div className="label">Studi kasus</div>
-              <input className="input" value={caseStudy} onChange={(e) => setCaseStudy(e.target.value)} placeholder="Bank X, RSUD Y…" />
-            </div>
-            <div>
-              <div className="label">Judul (opsional, nanti bisa dari brainstorm)</div>
-              <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <div className="label">Masalah awal</div>
-            <textarea className="input" rows={3} value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="Kesenjangan / masalah yang ingin diselesaikan…" />
-          </div>
-          <button className="btn-primary" onClick={() => setStep(2)} disabled={busy}>
-            Lanjut <ArrowRight size={15} />
-          </button>
+            <div className="mt-3 text-[10px] text-ink-400">Isi detail metode, sitasi, dan format di langkah berikutnya.</div>
+          </aside>
         </div>
       )}
 

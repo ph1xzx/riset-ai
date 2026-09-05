@@ -196,21 +196,21 @@ export default function WordPreviewPage() {
       `}</style>
 
       {/* toolbar ala Word */}
-      <div className="wp-toolbar fixed top-0 inset-x-0 z-10 h-12 bg-[#2b579a] text-white flex items-center gap-3 px-4 shadow-md">
+      <div className="wp-toolbar fixed top-14 inset-x-0 z-10 h-12 bg-[#2b579a] text-white flex items-center gap-3 px-4 shadow-md">
         <Link href={`/projects/${params.id}`} className="flex items-center gap-1.5 text-sm hover:underline">
           <ArrowLeft size={15} /> Kembali ke editor
         </Link>
         <div className="text-sm font-semibold truncate max-w-[340px]">{project?.title || "Pratinjau"}</div>
         <div className="ml-auto flex items-center gap-2 text-sm">
-          <button className="p-1.5 rounded hover:bg-white/15" onClick={() => setZoom((z) => Math.max(0.4, +(z - 0.1).toFixed(2)))}>
+          <button className="min-h-9 min-w-9 inline-flex items-center justify-center rounded hover:bg-white/15" onClick={() => setZoom((z) => Math.max(0.4, +(z - 0.1).toFixed(2)))}>
             <ZoomOut size={15} />
           </button>
           <span className="w-12 text-center">{Math.round(zoom * 100)}%</span>
-          <button className="p-1.5 rounded hover:bg-white/15" onClick={() => setZoom((z) => Math.min(1.6, +(z + 0.1).toFixed(2)))}>
+          <button className="min-h-9 min-w-9 inline-flex items-center justify-center rounded hover:bg-white/15" onClick={() => setZoom((z) => Math.min(1.6, +(z + 0.1).toFixed(2)))}>
             <ZoomIn size={15} />
           </button>
           <span className="opacity-80">{total ? `Halaman ${total}` : "…"}</span>
-          <button className="p-1.5 rounded hover:bg-white/15" onClick={() => window.print()} title="Cetak / simpan PDF">
+          <button className="min-h-9 min-w-9 inline-flex items-center justify-center rounded hover:bg-white/15" onClick={() => window.print()} title="Cetak / simpan PDF">
             <Printer size={15} />
           </button>
         </div>

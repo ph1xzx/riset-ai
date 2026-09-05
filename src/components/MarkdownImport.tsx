@@ -155,7 +155,7 @@ export default function MarkdownImport({ notify }: { notify: (t: string) => void
   );
 
   return (
-    <div className="card p-6">
+    <div className="card p-4 sm:p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
         <FileCode2 size={18} className="text-brand-600" /> Impor Markdown Package (.md / .zip)
       </h2>
@@ -181,7 +181,7 @@ export default function MarkdownImport({ notify }: { notify: (t: string) => void
       {err && <div className="mt-3 text-sm text-rose-600">{err}</div>}
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6" onClick={() => !busy && setOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-3 sm:p-6" onClick={() => !busy && setOpen(false)}>
           <div className="card w-full max-w-xl max-h-[80vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Smart Asset Resolver</h3>

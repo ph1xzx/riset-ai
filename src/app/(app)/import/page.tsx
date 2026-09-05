@@ -148,13 +148,14 @@ export default function ImportPage() {
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
       {task.task && <TaskOverlay task={task.task} />}
       <div>
-        <h1 className="text-2xl font-bold">Impor & Pedoman</h1>
+        <h1 className="text-xl font-bold">Impor & Pedoman</h1>
         <p className="text-sm text-ink-500 mt-1">
           Dua mode: impor skripsi .docx untuk <b>cek penulisan & sitasi</b>, atau unggah skripsi lama sebagai
           <b> pedoman struktur + format</b> (custom, bukan Bab I–V kaku).
         </p>
       </div>
 
+      <div className="grid lg:grid-cols-2 gap-3 items-start">
       {/* ---- IMPOR SKRIPSI ---- */}
       <div className="card p-4 sm:p-5">
         <h2 className="font-semibold flex items-center gap-2 mb-1">
@@ -245,9 +246,11 @@ export default function ImportPage() {
           </div>
         )}
       </div>
+      </div>
 
       {/* ---- IMPOR MARKDOWN PACKAGE ---- */}
-      <MarkdownImport notify={setMsg} />
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-3 items-start">
+        <MarkdownImport notify={setMsg} />
 
       <div className="card p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3 mb-1">
@@ -293,6 +296,7 @@ export default function ImportPage() {
             Belum ada file yang tersimpan.
           </div>
         )}
+      </div>
       </div>
 
       {msg && !busy && (
