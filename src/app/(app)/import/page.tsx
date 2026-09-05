@@ -85,7 +85,7 @@ export default function ImportPage() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "Import gagal");
-      task.log(`Mengekstrak format kampus & ${j.sections} section (${j.words} kata)…`);
+      task.log(`Mengekstrak format kampus & ${j.sections} section (${j.words} kata${typeof j.images === "number" ? `, ${j.images} gambar` : ""})…`);
       task.log("Selesai — membuka proyek…");
       setMsg(`Impor selesai: ${j.sections} section, ${j.words} kata. Membuka…`);
       router.push(`/projects/${j.project.id}`);

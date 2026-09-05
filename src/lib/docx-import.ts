@@ -14,6 +14,15 @@ export type ImportedDoc = {
   rawHtml: string;
 };
 
+export type ImportedImage = {
+  mime: string;
+  bytes: Buffer;
+  index: number;
+};
+
+/** Simpan asset DOCX ke storage lalu kembalikan URL yang bisa dibuka browser. */
+export type ImportedImageStore = (image: ImportedImage) => Promise<string>;
+
 const HEADING_STYLES = [
   "p[style-name='Heading 1'] => h1:fresh",
   "p[style-name='Heading 2'] => h2:fresh",
@@ -247,6 +256,64 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
   if (cover.length >= 20) title = cover.slice(0, 160);
 
   return { title: title || "(dokumen tanpa judul)", blocks, sections, rawHtml };
+}
+
+const DATA_IMAGE_RE = /data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)(?=["'])/gi;
+
+export function docxImageExtension(mime: string): string {
+  const subtype = mime.split("/")[1]?.toLowerCase() || "png";
+  if (subtype === "jpeg") return "jpg";
+  if (subtype === "svg+xml") return "svg";
+  return subtype.replace(/[^a-z0-9]/g, "") || "png";
+}
+
+/**
+ * Mammoth menghasilkan gambar sebagai data URI. Data URI cocok untuk preview
+ * kecil, tetapi membuat response proyek dan autosave menjadi sangat besar.
+ * Materialisasi memindahkannya ke storage dan mengganti src menjadi URL biasa.
+ */
+export async function materializeDocxImages(
+  doc: ImportedDoc,
+  store: ImportedImageStore
+): Promise<{ doc: ImportedDoc; images: number; stored: number }> {
+  const cache = new Map<string, string>();
+  let nextIndex = 0;
+  let imageOccurrences = 0;
+  let storedImages = 0;
+
+  async function replaceInHtml(html: string): Promise<string> {
+    const matches = Array.from(html.matchAll(DATA_IMAGE_RE));
+    if (!matches.length) return html;
+
+    let output = html;
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const match = matches[i];
+      const dataUri = match[0];
+      const index = match.index;
+      if (index == null) continue;
+
+      const mime = match[1].toLowerCase();
+      const base64 = match[2].replace(/\s+/g, "");
+      let url = cache.get(dataUri);
+      if (!url) {
+        nextIndex += 1;
+        url = await store({ mime, bytes: Buffer.from(base64, "base64"), index: nextIndex });
+        cache.set(dataUri, url);
+        storedImages += 1;
+      }
+
+      output = `${output.slice(0, index)}${url}${output.slice(index + dataUri.length)}`;
+      imageOccurrences += 1;
+    }
+    return output;
+  }
+
+  const sections = [];
+  for (const section of doc.sections) {
+    sections.push({ ...section, html: await replaceInHtml(section.html) });
+  }
+
+  return { doc: { ...doc, sections }, images: imageOccurrences, stored: storedImages };
 }
 
 /** Struktur (hanya heading) dari DOCX pedoman lama → custom structure. */

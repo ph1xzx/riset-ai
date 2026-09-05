@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { parseDocx } from "@/lib/docx-import";
+import { docxImageExtension, materializeDocxImages, parseDocx } from "@/lib/docx-import";
 import { extractCampusStyle } from "@/lib/docx-style";
-import { fetchFileBytes } from "@/lib/storage";
+import { fetchFileBytes, saveFileBytes } from "@/lib/storage";
 import { stripHtml } from "@/lib/json";
 import { getSessionUser } from "@/lib/auth-token";
 
@@ -27,7 +27,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const doc = await parseDocx(buffer);
+    const parsed = await parseDocx(buffer);
+    const { doc, images } = await materializeDocxImages(parsed, async ({ mime, bytes, index }) => {
+      const extension = docxImageExtension(mime);
+      return saveFileBytes(`docx-image-${Date.now()}-${index}.${extension}`, bytes, session?.id);
+    });
     if (!doc.sections.length) {
       return NextResponse.json({ error: "Tidak ada section terdeteksi di dokumen" }, { status: 400 });
     }
@@ -76,7 +80,7 @@ export async function POST(req: NextRequest) {
       await prisma.project.delete({ where: { id: project.id } });
       return NextResponse.json({ error: "Dokumen tidak berisi teks yang bisa diimpor." }, { status: 400 });
     }
-    return NextResponse.json({ project, sections: project.sections.length, words }, { status: 201 });
+    return NextResponse.json({ project, sections: project.sections.length, words, images }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: `Parse DOCX gagal: ${e.message}` }, { status: 400 });
   }
