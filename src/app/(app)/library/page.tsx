@@ -85,8 +85,8 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-bold">Library</h1>
           <p className="text-sm text-ink-500 mt-1">
@@ -101,7 +101,7 @@ export default function LibraryPage() {
       {error && <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">{error}</div>}
 
       {loadingProjects ? (
-        <div className="card p-8 text-center text-sm text-ink-400"><Loader2 className="mx-auto mb-2 animate-spin" size={18} />Memuat proyek…</div>
+        <div className="card p-6 text-center text-sm text-ink-400"><Loader2 className="mx-auto mb-2 animate-spin" size={18} />Memuat proyek…</div>
       ) : projects.length > 0 ? (
         <select className="input mb-4 max-w-xs" value={projectId} onChange={(e) => setProjectId(e.target.value)} aria-label="Pilih proyek">
           {projects.map((p) => (
@@ -111,19 +111,19 @@ export default function LibraryPage() {
       ) : null}
 
       {loadingSources ? (
-        <div className="card p-8 text-center text-sm text-ink-400"><Loader2 className="mx-auto mb-2 animate-spin" size={18} />Memuat sumber…</div>
+        <div className="card p-6 text-center text-sm text-ink-400"><Loader2 className="mx-auto mb-2 animate-spin" size={18} />Memuat sumber…</div>
       ) : !projects.length ? (
-        <div className="card p-10 text-center text-sm text-ink-500">
+        <div className="card p-8 text-center text-sm text-ink-500">
           Belum ada proyek. <Link className="text-brand-600 underline" href="/new">Buat proyek pertama</Link> untuk mulai mengumpulkan sumber.
         </div>
       ) : sources.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-ink-400">
+        <div className="card p-8 text-center text-sm text-ink-400">
           Belum ada sumber. Cari paper di <Link className="text-brand-600 underline" href="/find-papers">Find Papers</Link>.
         </div>
       ) : (
         <div className="space-y-2">
           {sources.map((s) => (
-            <div key={s.id} className="card p-4 flex items-start justify-between gap-3">
+            <div key={s.id} className="card p-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="font-medium text-[15px] line-clamp-1">{s.title}</div>
                 <div className="text-xs text-ink-500 mt-0.5">

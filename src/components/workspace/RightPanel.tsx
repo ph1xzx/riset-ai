@@ -407,7 +407,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   };
 
   return (
-    <aside className="w-80 shrink-0 bg-white flex flex-col">
+    <aside className="w-[18rem] xl:w-80 shrink-0 bg-white flex flex-col">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
       <div className="flex items-center border-b border-ink-100">
         <div className="flex-1 flex">

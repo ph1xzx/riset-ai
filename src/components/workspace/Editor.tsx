@@ -928,7 +928,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
     <div onKeyDown={keydown} className="h-full flex flex-col">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
       {/* header section */}
-      <div className="px-8 pt-4 pb-2 border-b border-ink-100 bg-white sticky top-0 z-10">
+      <div className="px-4 pt-3 pb-2 border-b border-ink-100 bg-white sticky top-0 z-10">
         <div className="flex items-center gap-3 max-w-[72ch] mx-auto">
           <h2 className="text-lg font-bold flex-1 min-w-0 truncate">{section.title}</h2>
           <button
@@ -1017,7 +1017,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
       )}
 
       {/* toolbar */}
-      <div className="border-b border-ink-100 bg-white px-8 py-1.5 sticky top-[64px] z-10">
+      <div className="border-b border-ink-100 bg-white px-4 py-1.5 sticky top-[60px] z-10">
         <div className="flex items-center gap-0.5 max-w-[72ch] mx-auto flex-wrap">
           <TBtn onClick={() => editor.chain().focus().undo().run()} title="Undo"><Undo2 size={14} /></TBtn>
           <TBtn onClick={() => editor.chain().focus().redo().run()} title="Redo"><Redo2 size={14} /></TBtn>
@@ -1134,7 +1134,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
         )}
 
         {historyOpen && (
-          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6" onClick={() => setHistoryOpen(false)}>
+          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-3 sm:p-6" onClick={() => setHistoryOpen(false)}>
             <div className="card w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-history-title">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -1167,7 +1167,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
 
         {/* diff modal */}
         {diff && (
-          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-3 sm:p-6">
             <div className="card w-full max-w-3xl max-h-[80vh] overflow-y-auto p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
@@ -1176,7 +1176,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
                 </h3>
                 <button className="text-ink-400 hover:text-ink-700" onClick={() => setDiff(null)}><X size={16} /></button>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm leading-relaxed">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm leading-relaxed">
                 <div className="border border-ink-200 rounded-lg p-3 bg-rose-50/30">
                   <div className="text-[11px] font-semibold text-ink-400 mb-1.5">SEBELUM</div>
                   <p>
@@ -1208,7 +1208,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
 
         {/* cite modal */}
         {citing && (
-          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6" onClick={() => setCiting(false)}>
+          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-3 sm:p-6" onClick={() => setCiting(false)}>
             <div className="card w-full max-w-lg p-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold flex items-center gap-2"><BookOpen size={15} className="text-brand-600" /> Sisipkan sitasi</h3>
@@ -1268,7 +1268,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
 
         {/* MODAL GAMBAR: Generate AI / Dari URL / Cari di web */}
         {imgOpen && (
-          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6" onClick={() => setImgOpen(false)}>
+          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-3 sm:p-6" onClick={() => setImgOpen(false)}>
             <div className="card w-full max-w-xl p-5" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
@@ -1360,7 +1360,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
                     </button>
                   </div>
                   {imgResults && (
-                    <div className="grid grid-cols-2 gap-2 mt-3 max-h-64 overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 max-h-64 overflow-y-auto">
                       {imgResults.map((r: any, i: number) => (
                         <button
                           key={i}
@@ -1378,7 +1378,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
                 </div>
               )}
 
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="label">Taruh gambar di section</div>
                   <select className="input" value={imgSection || section.id} onChange={(e) => setImgSection(e.target.value)}>

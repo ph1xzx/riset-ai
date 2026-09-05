@@ -577,7 +577,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   const projectFormatLocked = Boolean((parseJsonObject(project.campusStyle, {}) as any).formatLocked);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-[calc(100dvh-3.5rem)] md:h-[100dvh] overflow-hidden">
       {task.task && <TaskOverlay task={task.task} />}
       {/* KIRI: struktur (show/hide) */}
       <div className={showLeft ? "fixed inset-y-0 left-0 z-30 flex bg-white shadow-xl md:static md:z-auto md:shadow-none" : "hidden"}>
@@ -594,7 +594,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
       {/* TENGAH: editor */}
       <div className="flex-1 min-w-0 flex flex-col border-r border-ink-200 bg-white">
-        <div className="h-14 border-b border-ink-100 flex items-center gap-2.5 px-4 shrink-0 overflow-x-auto">
+        <div className="h-12 border-b border-ink-100 flex items-center gap-2 px-3 shrink-0 overflow-x-auto">
           <button
             className={`btn-ghost !px-2 shrink-0 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
             title={showLeft ? "Sembunyikan sidebar struktur" : "Tampilkan sidebar struktur"}
@@ -788,14 +788,14 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
       {/* MODAL FORMAT KAMPUS */}
       {formatOpen && fmt && (
-        <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6" onClick={() => setFormatOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-3 sm:p-6" onClick={() => setFormatOpen(false)}>
           <div className="card w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold flex items-center gap-2"><Sliders size={16} className="text-brand-600" /> Format Kampus (Template)</h3>
               <button className="text-ink-400 hover:text-ink-700" onClick={() => setFormatOpen(false)}><X size={16} /></button>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="label">Ukuran kertas</div>
                   <select className="input" value={fmt.pageSize} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, pageSize: e.target.value })}>
@@ -810,7 +810,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               </div>
               <div>
                 <div className="label">Margin (cm)</div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(["top", "right", "bottom", "left"] as const).map((side) => (
                     <div key={side}>
                       <div className="text-[10px] text-ink-400 uppercase text-center mb-0.5">
@@ -830,7 +830,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="label">Ukuran font (pt)</div>
                   <input className="input" type="number" step="0.5" min="8" max="16" value={fmt.body.size} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, size: Number(e.target.value) } })} />
@@ -845,7 +845,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="label">Ukuran heading bab (pt)</div>
                   <input className="input" type="number" step="0.5" min="10" max="16" value={fmt.heading1.size} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, heading1: { ...fmt.heading1, size: Number(e.target.value) } })} />
@@ -887,7 +887,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       )}
 
       {showTpl && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6" onClick={() => setShowTpl(false)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3 sm:p-6" onClick={() => setShowTpl(false)}>
           <div className="card p-5 w-full max-w-lg max-h-[80vh] overflow-y-auto space-y-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div className="font-semibold flex items-center gap-2">
@@ -943,7 +943,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       )}
 
       {issues !== null && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6" onClick={() => setIssues(null)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3 sm:p-6" onClick={() => setIssues(null)}>
           <div className="card p-5 w-full max-w-xl max-h-[80vh] overflow-y-auto space-y-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div className="font-semibold flex items-center gap-2">
@@ -970,7 +970,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
       )}
 
       {roundtrip && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6" onClick={() => setRoundtrip(null)}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3 sm:p-6" onClick={() => setRoundtrip(null)}>
           <div className="card p-5 w-full max-w-2xl max-h-[82vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="roundtrip-title">
             <div className="flex items-start justify-between gap-3">
               <div>

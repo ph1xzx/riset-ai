@@ -173,9 +173,9 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
-        <div className="flex items-start gap-2 mb-6">
+        <div className="flex items-start gap-2 mb-4">
         {step > 1 && (
           <button className="btn-ghost !px-2" onClick={() => setStep(step - 1)}>
             <ArrowLeft size={16} />
@@ -194,7 +194,7 @@ export default function NewProjectPage() {
 
       {/* STEP 1 */}
       {step === 1 && (
-        <div className="card p-6 space-y-5">
+        <div className="card p-4 sm:p-5 space-y-4">
           <h1 className="text-xl font-bold">Tipe & Topik Penelitian</h1>
           <div>
             <div className="label">Tipe</div>
@@ -217,7 +217,7 @@ export default function NewProjectPage() {
             <div className="label">Topik penelitian *</div>
             <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="cth: sistem pendukung keputusan pemilihan e-wallet terbaik" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <div className="label">Bidang</div>
               <input className="input" value={field} onChange={(e) => setField(e.target.value)} placeholder="Informatika, Manajemen, Kesehatan…" />
@@ -247,7 +247,7 @@ export default function NewProjectPage() {
 
       {/* STEP 2 */}
       {step === 2 && (
-        <div className="card p-6 space-y-5">
+        <div className="card p-4 sm:p-5 space-y-4">
           <h1 className="text-xl font-bold">Metode & Preferensi Sitasi</h1>
           <div>
             <div className="label">Metode penelitian</div>
@@ -303,7 +303,7 @@ export default function NewProjectPage() {
             <div className="text-[11px] text-ink-400 mt-1.5">Metode tidak hardcode per bidang, bebas apa pun.</div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <div className="label">Bahasa</div>
               <select className="input" value={language} onChange={(e) => setLanguage(e.target.value)}>
@@ -321,7 +321,7 @@ export default function NewProjectPage() {
                 ))}
               </select>
             </div>
-            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <div className="label">Tahun dari</div>
                 <input className="input" value={yearFrom} onChange={(e) => setYearFrom(e.target.value)} />
@@ -347,7 +347,7 @@ export default function NewProjectPage() {
 
       {/* STEP 3 */}
       {step === 3 && (
-        <div className="card p-6 space-y-5">
+        <div className="card p-4 sm:p-5 space-y-4">
           <h1 className="text-xl font-bold">Pedoman Kampus / Skripsi Lama (opsional)</h1>
           <p className="text-sm text-ink-600">
             Upload skripsi lama atau pedoman (.docx) → struktur bab + format (margin, font, spasi) diekstrak dan dipakai
@@ -394,7 +394,7 @@ export default function NewProjectPage() {
             </div>
           )}
           {guide && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-3">
               <div className="border border-ink-200 rounded-lg p-3 bg-ink-50 max-h-56 overflow-y-auto">
                 <div className="text-xs font-semibold text-ink-500 mb-1">
                   STRUKTUR ({guide.structure.headings.length} heading)
@@ -439,7 +439,7 @@ export default function NewProjectPage() {
           </div>
           <p className="text-sm text-ink-500 -mt-2">Pilih 1 → proyek langsung pakai judul + ResearchMemory + struktur.</p>
 
-          {busy && !titles && <div className="card p-10 text-center text-ink-400 text-sm flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> AI menyusun alternatif judul…</div>}
+          {busy && !titles && <div className="card p-8 text-center text-ink-400 text-sm flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> AI menyusun alternatif judul…</div>}
           {!busy && !titles && !err && (
             <div className="card p-8 text-center text-sm text-ink-500">
               Belum ada alternatif judul. <button type="button" className="text-brand-700 font-semibold underline" onClick={() => runBrainstorm()}>Coba lagi</button>.

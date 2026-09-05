@@ -107,9 +107,9 @@ export default function FindPapersPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
-      <div className="mb-5">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold">Find Papers</h1>
         <p className="text-sm text-ink-500 mt-1">
           Pencarian 200M+ paper via <b>OpenAlex + Crossref</b> (gratis, tanpa key). Simpan ke Library proyek →
@@ -117,7 +117,7 @@ export default function FindPapersPage() {
         </p>
       </div>
 
-      <div className="card p-4 mb-5">
+      <div className="card p-3 mb-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex-1 flex items-center gap-2 border border-ink-200 rounded-lg px-3">
             <Search size={16} className="text-ink-400" />
@@ -133,7 +133,7 @@ export default function FindPapersPage() {
             {busy ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Cari
           </button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-3 items-center text-sm">
+        <div className="mt-2 flex flex-wrap gap-2 items-center text-sm">
           <label className="flex items-center gap-1.5">
             <input className="input w-16" value={yearFrom} onChange={(e) => setYearFrom(e.target.value)} />
             –
@@ -160,12 +160,12 @@ export default function FindPapersPage() {
       {err && <div className="text-sm text-rose-600 mb-4">{err}</div>}
 
       {searched && results.length === 0 && !busy && (
-        <div className="card p-10 text-center text-ink-500 text-sm">Tidak ada hasil. Coba kata kunci lain.</div>
+        <div className="card p-8 text-center text-ink-500 text-sm">Tidak ada hasil. Coba kata kunci lain.</div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {results.map((p) => (
-          <div key={p.id} className="card p-4">
+          <div key={p.id} className="card p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="font-semibold text-[15px] leading-snug">
@@ -200,7 +200,7 @@ export default function FindPapersPage() {
       </div>
 
       {!searched && (
-        <div className="card p-10 text-center text-sm text-ink-400">
+        <div className="card p-8 text-center text-sm text-ink-400">
           Contoh: <em>“decision support e-wallet TOPSIS”</em>, <em>“early disease detection machine learning”</em>,
           atau tempel satu kalimat dari latar belakangmu.
           {projectId ? (

@@ -145,7 +145,7 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
       {task.task && <TaskOverlay task={task.task} />}
       <div>
         <h1 className="text-2xl font-bold">Impor & Pedoman</h1>
@@ -156,7 +156,7 @@ export default function ImportPage() {
       </div>
 
       {/* ---- IMPOR SKRIPSI ---- */}
-      <div className="card p-6">
+      <div className="card p-4 sm:p-5">
         <h2 className="font-semibold flex items-center gap-2 mb-1">
           <Upload size={18} className="text-brand-600" /> Impor Skripsi (.docx)
         </h2>
@@ -183,7 +183,7 @@ export default function ImportPage() {
       </div>
 
       {/* ---- PEDOMAN ---- */}
-      <div className="card p-6">
+      <div className="card p-4 sm:p-5">
         <h2 className="font-semibold flex items-center gap-2 mb-1">
           <FileCog size={18} className="text-brand-600" /> Upload Pedoman (skripsi lama)
         </h2>
@@ -206,7 +206,7 @@ export default function ImportPage() {
         </button>
 
         {guide && (
-          <div className="mt-5 grid md:grid-cols-2 gap-5">
+          <div className="mt-4 grid md:grid-cols-2 gap-4">
             <div>
               <div className="label">Struktur terdeteksi ({guide.structure.headings.length})</div>
               <div className="border border-ink-200 rounded-lg max-h-64 overflow-y-auto p-3 bg-ink-50">
@@ -249,7 +249,7 @@ export default function ImportPage() {
       {/* ---- IMPOR MARKDOWN PACKAGE ---- */}
       <MarkdownImport notify={setMsg} />
 
-      <div className="card p-6">
+      <div className="card p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3 mb-1">
           <div>
             <h2 className="font-semibold flex items-center gap-2">

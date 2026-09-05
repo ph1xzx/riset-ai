@@ -104,7 +104,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside
         className={`shrink-0 bg-[#101114] text-[#fbfaf7] flex-col transition-all duration-200 ease-in-out ${
           mobileOpen ? "fixed inset-y-0 left-0 z-50 flex w-60" : "hidden md:flex"
-        } ${isCollapsed ? "md:w-14" : "md:w-60"}`}
+        } ${isCollapsed ? "md:w-14" : "md:w-56"}`}
       >
         {/* Header brand + toggle */}
         {isCollapsed ? (
@@ -115,13 +115,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={toggleCollapsed}
               title="Perluas sidebar"
-              className="absolute inset-0 flex items-center justify-center bg-[#101114]/90 opacity-0 group-hover:opacity-100 text-[#8db4ff] transition-opacity"
+              className="absolute inset-0 flex items-center justify-center bg-[#101114]/90 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-[#8db4ff] transition-opacity"
             >
               <ChevronRight size={18} />
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-5 h-16 border-b border-white/10">
+          <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 shrink-0 rounded-none bg-[#3564ff] text-white flex items-center justify-center">
                 <FlaskConical size={18} />
@@ -146,7 +146,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Nav list */}
-        <nav className={`flex-1 space-y-0.5 ${isCollapsed ? "p-2" : "p-3"}`}>
+        <nav className={`flex-1 space-y-0.5 ${isCollapsed ? "p-2" : "p-2.5"}`}>
           {NAV.map((n) => {
             const active = pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href));
             return (
@@ -213,7 +213,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         ) : (
-          <div className="p-4 border-t border-white/10">
+          <div className="p-3 border-t border-white/10">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/50">
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -237,7 +237,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </aside>
 
-      <main className="flex-1 min-w-0">{children}</main>
+      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
     </div>
   );
 }

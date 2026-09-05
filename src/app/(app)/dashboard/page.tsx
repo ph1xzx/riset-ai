@@ -33,8 +33,8 @@ export default function Dashboard() {
   useEffect(load, []);
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400 mb-1.5">
             Workspace
@@ -65,7 +65,7 @@ export default function Dashboard() {
       ) : loading ? (
         <div className="text-ink-400 text-sm py-20 text-center">Memuat…</div>
       ) : projects.length === 0 ? (
-        <div className="card p-12 text-center">
+        <div className="card p-8 text-center">
           <BookOpenCheck size={40} className="mx-auto text-ink-300 mb-3" />
           <div className="font-semibold mb-1">Belum ada proyek</div>
           <p className="text-sm text-ink-500 mb-5">
@@ -81,9 +81,9 @@ export default function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {projects.map((p) => (
-            <Link key={p.id} href={`/projects/${p.id}`} className="card p-5 hover:border-ink-500 transition-colors group">
+            <Link key={p.id} href={`/projects/${p.id}`} className="card p-4 hover:border-ink-500 transition-colors group">
               <div className="flex items-start justify-between gap-2">
                 <div className="font-semibold group-hover:text-brand-600 line-clamp-2">{p.title}</div>
                 <FileText size={16} className="text-ink-300 shrink-0" />
@@ -92,7 +92,7 @@ export default function Dashboard() {
                 <span className="chip bg-ink-950 text-bone-50">{p.type}</span>
                 {p.method && <span className="chip bg-ink-100 text-ink-600">{p.method}</span>}
               </div>
-              <div className="mt-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-ink-500">
+              <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-ink-500">
                 <span>
                   {p._count.sections} section • {p._count.sources} sumber
                 </span>

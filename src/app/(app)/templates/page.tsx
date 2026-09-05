@@ -198,7 +198,7 @@ export default function TemplatesPage() {
   const visiblePresets = presetFilter === "Semua" ? presets : presets.filter((p) => p.category === presetFilter);
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
         <ScrollText size={20} />
         <h1 className="text-xl font-bold">Template Pedoman Penulisan</h1>
@@ -229,7 +229,7 @@ export default function TemplatesPage() {
         ) : (
         <div className="grid md:grid-cols-2 gap-3">
           {visiblePresets.map((p) => (
-            <div key={p.id} className="card p-4 space-y-2">
+            <div key={p.id} className="card p-3 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="font-semibold text-sm">{p.name}</div>
                 {p.category && <span className="chip bg-brand-50 text-brand-700 shrink-0">{p.category}</span>}
@@ -250,7 +250,7 @@ export default function TemplatesPage() {
       </div>
 
       {/* ===== DARI TEKS PEDOMAN ===== */}
-      <div className="card p-6 space-y-3">
+      <div className="card p-4 space-y-3">
         <div className="font-semibold flex items-center gap-2">
           <Plus size={16} /> Template dari teks pedoman
         </div>
@@ -323,7 +323,7 @@ export default function TemplatesPage() {
       <div className="space-y-3">
         <div className="font-semibold">Template tersimpan</div>
         {tpls.map((t) => (
-          <div key={t.id} className="card p-4">
+          <div key={t.id} className="card p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="font-semibold">{t.name}</div>
@@ -365,8 +365,8 @@ export default function TemplatesPage() {
 
       {/* ===== EDITOR PER-ATURAN ===== */}
       {ed && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6" onClick={() => setEd(null)}>
-          <div className="card p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto space-y-5" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3 sm:p-6" onClick={() => setEd(null)}>
+          <div className="card p-4 w-full max-w-2xl max-h-[85vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div className="font-semibold flex items-center gap-2">
                 <SlidersHorizontal size={16} /> Sesuaikan aturan satu per satu
@@ -374,8 +374,8 @@ export default function TemplatesPage() {
               <button className="btn-ghost !px-2" onClick={() => setEd(null)}>✕</button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
                 <div className="label">Nama template</div>
                 <input className="input" value={ed.name} onChange={(e) => setEd({ ...ed, name: e.target.value })} />
               </div>

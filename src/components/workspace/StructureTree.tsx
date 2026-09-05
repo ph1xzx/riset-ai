@@ -26,13 +26,13 @@ export default function StructureTree({ project, activeId, onSelect, onAdd, onDe
   const sections: any[] = project.sections || [];
 
   return (
-    <aside className="w-72 shrink-0 bg-ink-50/60 border-r border-ink-200 flex flex-col">
-      <div className="px-4 py-3 border-b border-ink-100">
+    <aside className="w-60 shrink-0 bg-ink-50/60 border-r border-ink-200 flex flex-col">
+      <div className="px-3 py-2.5 border-b border-ink-100">
         <div className="text-xs font-semibold uppercase tracking-wide text-ink-400">Struktur Dokumen</div>
         <div className="text-[11px] text-ink-400 mt-0.5">Custom — dari pedoman atau impor, bebas edit</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
         {sections.map((s, i) => {
           const st = STATUS[s.status] ?? STATUS.EMPTY;
           const active = s.id === activeId;
@@ -44,7 +44,7 @@ export default function StructureTree({ project, activeId, onSelect, onAdd, onDe
               }`}
               onClick={() => onSelect(s.id)}
             >
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 px-2 py-1.5">
                 <span className={active ? "w-1.5 h-1.5 rounded-full bg-brand-600 shrink-0" : "w-1.5 h-1.5 rounded-full bg-ink-200 shrink-0"} />
                 {editing === s.id ? (
                   <input
@@ -78,17 +78,17 @@ export default function StructureTree({ project, activeId, onSelect, onAdd, onDe
                   </span>
                 )}
                 <span className={`chip ${st.cls} shrink-0`}>{st.label}</span>
-                <div className="hidden group-hover:flex items-center shrink-0">
-                  <button className="p-0.5 text-ink-400 hover:text-ink-700" title="Naik" onClick={(e) => { e.stopPropagation(); onMove(s.id, -1); }}>
+                <div className="flex items-center shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                  <button className="min-h-9 min-w-9 inline-flex items-center justify-center text-ink-400 hover:text-ink-700" title="Naik" onClick={(e) => { e.stopPropagation(); onMove(s.id, -1); }}>
                     <ChevronUp size={13} />
                   </button>
-                  <button className="p-0.5 text-ink-400 hover:text-ink-700" title="Turun" onClick={(e) => { e.stopPropagation(); onMove(s.id, 1); }}>
+                  <button className="min-h-9 min-w-9 inline-flex items-center justify-center text-ink-400 hover:text-ink-700" title="Turun" onClick={(e) => { e.stopPropagation(); onMove(s.id, 1); }}>
                     <ChevronDown size={13} />
                   </button>
-                  <button className="p-0.5 text-ink-400 hover:text-ink-700" title="Rename" onClick={(e) => { e.stopPropagation(); setEditing(s.id); setEditVal(s.title); }}>
+                  <button className="min-h-9 min-w-9 inline-flex items-center justify-center text-ink-400 hover:text-ink-700" title="Rename" onClick={(e) => { e.stopPropagation(); setEditing(s.id); setEditVal(s.title); }}>
                     <PenLine size={13} />
                   </button>
-                  <button className="p-0.5 text-ink-400 hover:text-rose-600" title="Hapus" onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}>
+                  <button className="min-h-9 min-w-9 inline-flex items-center justify-center text-ink-400 hover:text-rose-600" title="Hapus" onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}>
                     <Trash2 size={13} />
                   </button>
                 </div>

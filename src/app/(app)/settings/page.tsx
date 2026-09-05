@@ -60,7 +60,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Settings — BYOK</h1>
         <p className="text-sm text-ink-500 mt-1">
@@ -76,8 +76,8 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="card p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="card p-4 sm:p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="label">Provider</div>
             <select className="input" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })}>
@@ -110,7 +110,7 @@ export default function SettingsPage() {
             Terenkripsi di sisi server (database). Tidak dikirim balik setelah disimpan.
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="label">Model</div>
             <input className="input" placeholder="gpt-4o-mini / gemini-2.5-flash / llama3.1:8b / …" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
@@ -126,7 +126,7 @@ export default function SettingsPage() {
           <b> Model Gambar</b> mis. <code>gemini-2.5-flash-image</code> (kosongkan untuk auto-fallback).
           Provider OpenAI-compatible memakai <code>/images/generations</code>.
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="label">Max tokens</div>
             <input className="input" type="number" value={form.maxTokens} onChange={(e) => setForm({ ...form, maxTokens: Number(e.target.value) })} />
@@ -157,7 +157,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="card p-6">
+      <div className="card p-4 sm:p-5">
         <div className="font-semibold flex items-center gap-2 mb-2">
           <Database size={16} className="text-brand-600" /> Infrastruktur
         </div>
@@ -171,7 +171,7 @@ export default function SettingsPage() {
         </ul>
       </div>
 
-      <div className="card p-6 space-y-3">
+      <div className="card p-4 sm:p-5 space-y-3">
         <div className="font-semibold flex items-center gap-2">
           <AlertTriangle size={16} className="text-brand-600" /> Cek koneksi sistem
         </div>
