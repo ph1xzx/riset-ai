@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ZoomIn, ZoomOut, Printer, Loader2 } from "lucide-react";
+import { normalizeTableHtml } from "@/lib/table-format";
 
 /* ============ ukuran A4 @96dpi ============ */
 const CM = 37.795;
@@ -43,7 +44,7 @@ function contentToBlocks(html: string): Blk[] {
       const end = scanList(html, m.index);
       out.push({ kind: "list", html: html.slice(m.index, end), gapBefore: 0, gapAfter: 8 });
       re.lastIndex = end;
-    } else if (/^<table/i.test(b)) out.push({ kind: "table", html: b, gapBefore: 8, gapAfter: 16 });
+    } else if (/^<table/i.test(b)) out.push({ kind: "table", html: normalizeTableHtml(b), gapBefore: 8, gapAfter: 16 });
     else if (/^<blockquote/i.test(b)) out.push({ kind: "quote", html: b, gapBefore: 0, gapAfter: 0 });
     else if (/^<h3/i.test(b)) out.push({ kind: "h3", html: b, gapBefore: 12, gapAfter: 6 });
     else if (/^<img/i.test(b)) out.push({ kind: "img", html: b, gapBefore: 0, gapAfter: 8 });
@@ -166,8 +167,9 @@ export default function WordPreviewPage() {
         .wp-body p { margin: 0; text-align: justify; line-height: ${LINE_PX}px; text-indent: ${INDENT_PX}px; }
         .wp-body h3 { margin: 0; font-weight: normal; line-height: ${LINE_PX}px; text-align: left; text-indent: 0; }
         .wp-body blockquote { margin: 0; font-style: italic; text-align: justify; padding: 0 48px; line-height: ${LINE_PX}px; }
-        .wp-body table { border-collapse: collapse; margin: 0 auto; max-width: 100%; }
-        .wp-body td, .wp-body th { border: 1px solid #444; padding: 3px 8px; font-size: ${FONT_PX - 2}px; line-height: ${Math.round(LINE_PX * 0.62)}px; }
+        .wp-body table { border-collapse: collapse; margin: 0 auto; width: 100%; max-width: 100%; table-layout: fixed; }
+        .wp-body td, .wp-body th { border: 1px solid #444; padding: 3px 8px; font-size: ${FONT_PX - 2}px; line-height: ${Math.round(LINE_PX * 0.62)}px; overflow-wrap: anywhere; word-break: break-word; }
+        .wp-body th { background: #e8edf3; font-weight: bold; text-align: center; }
         .wp-body img { display: block; margin: 0 auto; max-width: 100%; }
         .wp-body ul, .wp-body ol { margin: 0; padding-left: 48px; line-height: ${LINE_PX}px; }
         .wp-body ul ul, .wp-body ol ol, .wp-body ul ol, .wp-body ol ul { padding-left: 32px; }

@@ -5,6 +5,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { Root, RootContent, PhrasingContent, ListItem, Table } from "mdast";
 import type { MdSection } from "./markdown";
+import { normalizeTableHtml } from "./table-format";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -63,14 +64,14 @@ function blocks(nodes: RootContent[]): string {
         break;
       case "table": {
         const t = n as Table;
-        out += "<table>";
+        let tableHtml = "<table><tbody>";
         t.children.forEach((row, ri) => {
-          out += "<tr>";
+          tableHtml += "<tr>";
           for (const cell of row.children)
-            out += ri === 0 ? `<th>${inline(cell.children as any)}</th>` : `<td>${inline(cell.children as any)}</td>`;
-          out += "</tr>";
+            tableHtml += ri === 0 ? `<th>${inline(cell.children as any)}</th>` : `<td>${inline(cell.children as any)}</td>`;
+          tableHtml += "</tr>";
         });
-        out += "</table>";
+        out += normalizeTableHtml(`${tableHtml}</tbody></table>`);
         break;
       }
       case "heading": {

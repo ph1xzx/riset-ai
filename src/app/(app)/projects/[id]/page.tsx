@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Download, Loader2, FileText, Trash2, Sliders, X, Check, PanelLeft, PanelRight, FolderArchive, ScrollText, ShieldCheck, Eye, ChevronDown, Maximize2, Minimize2, Search } from "lucide-react";
+import { Download, Loader2, FileText, Trash2, Sliders, X, Check, PanelLeft, PanelRight, FolderArchive, ScrollText, ShieldCheck, Eye, ChevronDown, Maximize2, Minimize2, Search, Table as TableIcon } from "lucide-react";
 import StructureTree from "@/components/workspace/StructureTree";
 import Editor from "@/components/workspace/Editor";
 import RightPanel from "@/components/workspace/RightPanel";
@@ -44,6 +44,8 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   const [tplBusy, setTplBusy] = useState("");
   const [reformat, setReformat] = useState(false);
   const [issues, setIssues] = useState<FormatIssue[] | null>(null);
+  const [busyTables, setBusyTables] = useState(false);
+  const [editorRevision, setEditorRevision] = useState(0);
   const task = useTask();
   const pendingImage = useRef<{ sectionId: string; url: string; caption?: string } | null>(null);
   const pendingSearch = useRef<{ sectionId: string; query: string } | null>(null);
@@ -425,6 +427,26 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     }
   }
 
+  async function formatProjectTables() {
+    setBusyTables(true);
+    try {
+      const res = await fetch(`/api/projects/${params.id}/format-tables`, { method: "POST" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || "Tabel belum bisa dirapikan.");
+      setEditorRevision((value) => value + 1);
+      await load();
+      notify(
+        j.tables
+          ? `${j.tables} tabel diperiksa. ${j.sections ? `${j.sections} section diperbarui.` : "Semua tabel sudah rapi."}`
+          : "Belum ada tabel di proyek ini."
+      );
+    } catch (e: any) {
+      notify(e.message || "Tabel belum bisa dirapikan.");
+    } finally {
+      setBusyTables(false);
+    }
+  }
+
   async function exportPdf() {
     const preflightIssues = runFormatCheck();
     if (preflightIssues.some((issue) => issue.severity === "error")) {
@@ -571,6 +593,9 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           <button className="btn-outline shrink-0" onClick={openTpl} title="Terapkan template pedoman penulisan">
             <ScrollText size={14} /> <span className="hidden sm:inline">Template</span>
           </button>
+          <button className="btn-outline shrink-0" onClick={formatProjectTables} disabled={busyTables} title="Seragamkan header, kolom, dan baris seluruh tabel">
+            {busyTables ? <Loader2 size={14} className="animate-spin" /> : <TableIcon size={14} />} <span className="hidden sm:inline">Rapikan Tabel</span>
+          </button>
           <button className="btn-outline shrink-0" onClick={runFormatCheck} title="Periksa kepatuhan format terhadap pedoman">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Cek Format</span>
           </button>
@@ -680,7 +705,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto">
           {activeSection ? (
-            <Editor key={activeSection.id} project={project} section={activeSection} onSaved={load} notify={notify} />
+            <Editor key={`${activeSection.id}:${editorRevision}`} project={project} section={activeSection} onSaved={load} notify={notify} />
           ) : (
             <div className="p-10 text-center text-ink-400 text-sm">Belum ada section.</div>
           )}

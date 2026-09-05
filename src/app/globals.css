@@ -55,13 +55,20 @@ body {
 }
 .tiptap table {
   @apply border-collapse my-4 w-full;
+  table-layout: fixed;
 }
 .tiptap th,
 .tiptap td {
-  @apply border border-ink-300 px-3 py-1.5 text-sm;
+  @apply border border-ink-300 px-3 py-1.5 text-sm align-top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .tiptap th {
   @apply bg-ink-100 font-semibold;
+}
+.tiptap th p,
+.tiptap td p {
+  @apply mb-0;
 }
 .tiptap img {
   @apply max-w-full rounded my-2;
@@ -116,6 +123,16 @@ body {
 }
 
 @media (max-width: 767px) {
+  .tiptap {
+    @apply px-4 py-5;
+    font-size: 1rem;
+  }
+
+  .tiptap th,
+  .tiptap td {
+    @apply px-2 py-1.5 text-xs;
+  }
+
   .btn,
   .input,
   select.input,

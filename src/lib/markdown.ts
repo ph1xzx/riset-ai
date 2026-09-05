@@ -1,5 +1,6 @@
 // Konversi dua arah: HTML section aplikasi <-> Markdown modular (per bab),
 // plus manifest.json untuk paket export/import.
+import { normalizeTableHtml } from "./table-format";
 
 export type ManifestAsset = { key: string; filename: string; status: "uploaded" | "missing" };
 export type Manifest = {
@@ -130,10 +131,11 @@ export function htmlToMarkdown(html: string, mapImg: (src: string, alt: string) 
   while ((m = blockRe.exec(html)) !== null) {
     const blk = m[0];
     if (/^<table/i.test(blk)) {
+      const normalizedTable = normalizeTableHtml(blk);
       const rows: string[][] = [];
       const trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
       let trm: RegExpExecArray | null;
-      while ((trm = trRe.exec(blk)) !== null) {
+      while ((trm = trRe.exec(normalizedTable)) !== null) {
         const cells: string[] = [];
         const tdRe = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
         let tdm: RegExpExecArray | null;
@@ -201,6 +203,26 @@ export function htmlToMarkdown(html: string, mapImg: (src: string, alt: string) 
 /* ---------------- markdown -> sections (level 1/2 + html) ---------------- */
 export type MdSection = { title: string; level: 1 | 2; html: string };
 
+function splitMarkdownCells(line: string): string[] {
+  const body = line.trim().replace(/^\||\|$/g, "");
+  const cells: string[] = [];
+  let current = "";
+  for (let i = 0; i < body.length; i++) {
+    const char = body[i];
+    if (char === "\\" && body[i + 1] === "|") {
+      current += "|";
+      i++;
+    } else if (char === "|") {
+      cells.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
 function inlineToHtml(s: string): string {
   return s
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
@@ -238,18 +260,20 @@ export function markdownToSections(md: string): MdSection[] {
     if (/^\s*\|/.test(line) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
       const rows: string[][] = [];
       while (i < lines.length && /^\s*\|/.test(lines[i])) {
-        const cells = lines[i].trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+        const cells = splitMarkdownCells(lines[i]);
         if (!/^\s*:?-{2,}:?\s*$/.test(cells[0] ?? "") || cells.some((c) => c && !/^:?-{2,}:?$/.test(c))) rows.push(cells);
         i++;
       }
       if (rows.length) {
-        let html = "<table>";
-        rows.forEach((r, ri) => {
+        const width = Math.max(...rows.map((row) => row.length));
+        const padded = rows.map((row) => [...row, ...Array(Math.max(0, width - row.length)).fill("")]);
+        let html = "<table><tbody>";
+        padded.forEach((r, ri) => {
           html += "<tr>";
           for (const c of r) html += ri === 0 ? `<th>${inlineToHtml(esc(c))}</th>` : `<td>${inlineToHtml(esc(c))}</td>`;
           html += "</tr>";
         });
-        html += "</table>";
+        html += "</tbody></table>";
         push(html);
       }
       continue;

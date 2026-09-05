@@ -16,12 +16,17 @@ import {
   Footer,
   PageNumber,
   NumberFormat,
+  BorderStyle,
+  ShadingType,
+  VerticalAlign,
+  TableLayoutType,
 } from "docx";
 import { prisma } from "./db";
 import { fetchFileBytes } from "./storage";
 import { DEFAULT_CAMPUS_STYLE } from "./research";
 import { parseJsonObject, stripHtml } from "./json";
 import { renderBibliographyEntry, toSourceRef, type SourceRef } from "./citations";
+import { getTableRows } from "./table-format";
 
 type CampusStyle = typeof DEFAULT_CAMPUS_STYLE;
 
@@ -110,7 +115,7 @@ async function imgToRun(src: string, maxW = 460, maxH = 460): Promise<ImageRun |
 }
 
 /* ---------- HTML sederhana → children docx ---------- */
-function htmlToRuns(html: string, size: number, font: string): TextRun[] {
+function htmlToRuns(html: string, size: number, font: string, options: { forceBold?: boolean } = {}): TextRun[] {
   const runs: TextRun[] = [];
   const re = /<[^>]+>|[^<]+/g;
   let m: RegExpExecArray | null;
@@ -134,7 +139,7 @@ function htmlToRuns(html: string, size: number, font: string): TextRun[] {
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&amp;/g, "&");
-    runs.push(new TextRun({ text, bold, italics: italic, underline: underline ? {} : undefined, font, size: size * 2 }));
+    runs.push(new TextRun({ text, bold: options.forceBold || bold, italics: italic, underline: underline ? {} : undefined, font, size: size * 2 }));
   }
   return runs.length ? runs : [new TextRun({ text: "", font })];
 }
@@ -234,28 +239,56 @@ async function htmlToChildren(html: string, style: CampusStyle): Promise<Block[]
   while ((m = blockRe.exec(html)) !== null) {
     const blk = m[0];
     if (/^<table/i.test(blk)) {
-      const rows: TableRow[] = [];
-      const trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-      let trm: RegExpExecArray | null;
-      while ((trm = trRe.exec(blk)) !== null) {
-        const cells: TableCell[] = [];
-        const tdRe = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
-        let tdm: RegExpExecArray | null;
-        while ((tdm = tdRe.exec(trm[1])) !== null) {
-          cells.push(
-            new TableCell({
-              children: [
-                new Paragraph({
-                  spacing: { after: 40 },
-                  children: htmlToRuns(tdm[1], style.body.size, style.body.font),
-                }),
-              ],
-            })
-          );
-        }
-        if (cells.length) rows.push(new TableRow({ children: cells }));
+      const sourceRows = getTableRows(blk);
+      const columnCount = Math.max(...sourceRows.map((row) => row.cells.length), 0);
+      if (columnCount) {
+        const pageWidth = style.pageSize === "Letter" ? 12240 : 11906;
+        const marginWidth = convertMillimetersToTwip((style.margins.left + style.margins.right) * 10);
+        const tableWidth = Math.max(3600, pageWidth - marginWidth);
+        const columnWidth = Math.floor(tableWidth / columnCount);
+        const border = { style: BorderStyle.SINGLE, size: 4, color: "9AA4B2" };
+        const rows: TableRow[] = sourceRows.map((row, rowIndex) =>
+          new TableRow({
+            tableHeader: rowIndex === 0,
+            cantSplit: true,
+            children: row.cells.map(
+              (cell) =>
+                new TableCell({
+                  width: { size: columnWidth, type: WidthType.DXA },
+                  shading: rowIndex === 0 ? { fill: "E8EDF3", type: ShadingType.CLEAR } : undefined,
+                  margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                  verticalAlign: VerticalAlign.TOP,
+                  children: [
+                    new Paragraph({
+                      alignment: rowIndex === 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
+                      spacing: { after: 0 },
+                      indent: { left: 0, firstLine: 0 },
+                      children: htmlToRuns(cell.html, style.body.size, style.body.font, { forceBold: rowIndex === 0 }),
+                    }),
+                  ],
+                })
+            ),
+          })
+        );
+        out.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnWidths: Array.from({ length: columnCount }, () => columnWidth),
+            layout: TableLayoutType.FIXED,
+            alignment: AlignmentType.CENTER,
+            margins: { top: 80, bottom: 80, left: 100, right: 100 },
+            borders: {
+              top: border,
+              bottom: border,
+              left: border,
+              right: border,
+              insideHorizontal: border,
+              insideVertical: border,
+            },
+            rows,
+          })
+        );
       }
-      if (rows.length) out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
       continue;
     }
     if (/^<h3/i.test(blk)) {

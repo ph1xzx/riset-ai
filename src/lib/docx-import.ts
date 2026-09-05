@@ -1,4 +1,5 @@
 import mammoth from "mammoth";
+import { normalizeTableHtml } from "./table-format";
 
 export type ImportedBlock = {
   kind: "h1" | "h2" | "h3" | "body";
@@ -142,7 +143,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
 
     const html =
       tag === "table"
-        ? m[0]
+        ? normalizeTableHtml(m[0])
         : kind === "body"
         ? `<p>${inner}</p>`
         : `<${kind}>${inner}</${kind}>`;

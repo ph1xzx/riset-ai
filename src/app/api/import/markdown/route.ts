@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { DEFAULT_CAMPUS_STYLE } from "@/lib/research";
 import { getSessionUser } from "@/lib/auth-token";
+import { normalizeTableHtml } from "@/lib/table-format";
+import { stripHtml } from "@/lib/json";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -19,6 +21,9 @@ export async function POST(req: NextRequest) {
     ? b.sections
     : [];
   if (!sections.length) return NextResponse.json({ error: "sections wajib diisi" }, { status: 400 });
+  if (!sections.some((section) => stripHtml(section.html || "").trim())) {
+    return NextResponse.json({ error: "Markdown tidak berisi teks atau tabel yang bisa diimpor." }, { status: 400 });
+  }
 
   const project = await prisma.project.create({
     data: {
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest) {
           title: s.title || `Bagian ${i + 1}`,
           level: s.level === 2 ? 2 : 1,
           order: i,
-          content: s.html || "",
+          content: normalizeTableHtml(s.html || ""),
           status: "USER_EDITED",
         })),
       },

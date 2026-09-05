@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { parseDocx, extractStructureDocx } from "@/lib/docx-import";
+import { parseDocx } from "@/lib/docx-import";
 import { extractCampusStyle } from "@/lib/docx-style";
 import { fetchFileBytes } from "@/lib/storage";
-import { DEFAULT_CAMPUS_STYLE } from "@/lib/research";
 import { stripHtml } from "@/lib/json";
 import { getSessionUser } from "@/lib/auth-token";
 
@@ -69,7 +68,14 @@ export async function POST(req: NextRequest) {
       include: { sections: { orderBy: { order: "asc" } }, memory: true },
     });
 
-    const words = project.sections.reduce((acc, s) => acc + stripHtml(s.content).split(/\s+/).length, 0);
+    const words = project.sections.reduce((acc, s) => {
+      const text = stripHtml(s.content || "").trim();
+      return acc + (text ? text.split(/\s+/).length : 0);
+    }, 0);
+    if (words === 0) {
+      await prisma.project.delete({ where: { id: project.id } });
+      return NextResponse.json({ error: "Dokumen tidak berisi teks yang bisa diimpor." }, { status: 400 });
+    }
     return NextResponse.json({ project, sections: project.sections.length, words }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: `Parse DOCX gagal: ${e.message}` }, { status: 400 });

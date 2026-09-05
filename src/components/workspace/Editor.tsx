@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { stripHtml, parseJsonArray } from "@/lib/json";
 import { uploadFile } from "@/lib/upload";
+import { countTables, normalizeTableHtml } from "@/lib/table-format";
 
 /* ---------------- custom nodes ---------------- */
 
@@ -343,6 +344,36 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
     for (const range of ranges.reverse()) chain.setTextSelection(range).setItalic();
     chain.run();
     onSaved();
+  }
+
+  async function formatTables() {
+    const ed = editor;
+    if (!ed) return;
+    const before = ed.getHTML();
+    const tableCount = countTables(before);
+    if (!tableCount) {
+      notify("Belum ada tabel di section aktif.");
+      return;
+    }
+    const after = normalizeTableHtml(before);
+    if (after === before) {
+      notify("Tabel di section ini sudah rapi.");
+      return;
+    }
+    ed.chain().focus().setContent(after).run();
+    try {
+      const res = await fetch(`/api/sections/${section.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: after, status: "USER_EDITED" }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || "Tabel belum tersimpan.");
+      notify(`${tableCount} tabel dirapikan. Header, kolom, dan baris sudah diseragamkan.`);
+      onSaved();
+    } catch (e: any) {
+      notify(e.message || "Tabel belum tersimpan.");
+    }
   }
 
   function insertImage(url: string, caption?: string) {
@@ -918,18 +949,18 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
           <TBtn onClick={() => editor.chain().focus().undo().run()} title="Undo"><Undo2 size={14} /></TBtn>
           <TBtn onClick={() => editor.chain().focus().redo().run()} title="Redo"><Redo2 size={14} /></TBtn>
           <Sep />
-          <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} on={editor.isActive("heading", { level: 1 })}><Heading1 size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} on={editor.isActive("heading", { level: 2 })}><Heading2 size={14} /></TBtn>
+          <TBtn title="Heading 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} on={editor.isActive("heading", { level: 1 })}><Heading1 size={14} /></TBtn>
+          <TBtn title="Heading 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} on={editor.isActive("heading", { level: 2 })}><Heading2 size={14} /></TBtn>
           <Sep />
-          <TBtn onClick={() => editor.chain().focus().toggleBold().run()} on={editor.isActive("bold")}><Bold size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleItalic().run()} on={editor.isActive("italic")}><Italic size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleUnderline().run()} on={editor.isActive("underline")}><LU size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} on={editor.isActive("strike")}><Strikethrough size={14} /></TBtn>
+          <TBtn title="Tebal" onClick={() => editor.chain().focus().toggleBold().run()} on={editor.isActive("bold")}><Bold size={14} /></TBtn>
+          <TBtn title="Miring" onClick={() => editor.chain().focus().toggleItalic().run()} on={editor.isActive("italic")}><Italic size={14} /></TBtn>
+          <TBtn title="Garis bawah" onClick={() => editor.chain().focus().toggleUnderline().run()} on={editor.isActive("underline")}><LU size={14} /></TBtn>
+          <TBtn title="Coret" onClick={() => editor.chain().focus().toggleStrike().run()} on={editor.isActive("strike")}><Strikethrough size={14} /></TBtn>
           <Sep />
-          <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} on={editor.isActive("bulletList")}><List size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} on={editor.isActive("orderedList")}><ListOrdered size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} on={editor.isActive("blockquote")}><BQ size={14} /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleCode().run()} on={editor.isActive("code")}><Code size={14} /></TBtn>
+          <TBtn title="Daftar poin" onClick={() => editor.chain().focus().toggleBulletList().run()} on={editor.isActive("bulletList")}><List size={14} /></TBtn>
+          <TBtn title="Daftar bernomor" onClick={() => editor.chain().focus().toggleOrderedList().run()} on={editor.isActive("orderedList")}><ListOrdered size={14} /></TBtn>
+          <TBtn title="Kutipan" onClick={() => editor.chain().focus().toggleBlockquote().run()} on={editor.isActive("blockquote")}><BQ size={14} /></TBtn>
+          <TBtn title="Kode" onClick={() => editor.chain().focus().toggleCode().run()} on={editor.isActive("code")}><Code size={14} /></TBtn>
           <Sep />
           <TBtn
             onClick={() => {
@@ -937,6 +968,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
               if (url) editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
             }}
             on={editor.isActive("link")}
+            title="Tautan"
           >
             <LIcon size={14} />
           </TBtn>
@@ -949,6 +981,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
               setImgOpen(true);
             }}
             on={editor.isActive("image")}
+            title="Sisipkan gambar"
           >
             <IIcon size={14} />
           </TBtn>
@@ -959,7 +992,11 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
               else editor.chain().focus().deleteTable().run();
             }}
             on={editor.isActive("table")}
+            title={editor.isActive("table") ? "Hapus tabel" : "Sisipkan tabel"}
           >
+            <TIcon size={14} />
+          </TBtn>
+          <TBtn onClick={formatTables} title="Rapikan tabel">
             <TIcon size={14} />
           </TBtn>
           <Sep />
@@ -1345,9 +1382,11 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
 function TBtn({ children, onClick, on, title }: { children: React.ReactNode; onClick: () => void; on?: boolean; title?: string }) {
   return (
     <button
-      className={`p-1.5 rounded-md transition-colors ${on ? "bg-brand-100 text-brand-700" : "text-ink-500 hover:bg-ink-100"}`}
+      type="button"
+      className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md transition-colors ${on ? "bg-brand-100 text-brand-700" : "text-ink-500 hover:bg-ink-100"}`}
       onClick={onClick}
       title={title}
+      aria-label={title}
     >
       {children}
     </button>
