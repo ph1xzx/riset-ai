@@ -165,7 +165,7 @@ export default function SettingsPage() {
           <li>
             • Supabase: <b>{status?.supabase ? "terhubung (Postgres + Storage)" : "belum diset — mode lokal (fallback)"}</b>
           </li>
-          <li>• Akademik: OpenAlex + Crossref (keyless, gratis)</li>
+          <li>• Akademik: OpenAlex + Crossref (keyless), Unpaywall opsional untuk mencari PDF open access dari DOI</li>
           <li>• Contoh endpoint: OpenRouter <code className="text-xs bg-ink-100 px-1 rounded">https://openrouter.ai/api/v1</code>, Ollama{" "}
             <code className="text-xs bg-ink-100 px-1 rounded">http://localhost:11434/v1</code></li>
         </ul>

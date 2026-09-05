@@ -22,6 +22,15 @@ function mdHash(s: any): string {
   return h.toString(36);
 }
 
+type RoundtripAudit = {
+  ok: boolean;
+  filename: string;
+  original: { sections: number; words: number; tables: number };
+  roundtrip: { sections: number; words: number; tables: number };
+  missingSections: string[];
+  issues: { severity: "error" | "warn"; code: string; msg: string }[];
+};
+
 export type ProjectData = any;
 
 export default function ProjectPage({ params }: { params: { id: string } }) {
@@ -46,6 +55,8 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   const [issues, setIssues] = useState<FormatIssue[] | null>(null);
   const [busyTables, setBusyTables] = useState(false);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [roundtripBusy, setRoundtripBusy] = useState(false);
+  const [roundtrip, setRoundtrip] = useState<RoundtripAudit | null>(null);
   const task = useTask();
   const pendingImage = useRef<{ sectionId: string; url: string; caption?: string } | null>(null);
   const pendingSearch = useRef<{ sectionId: string; query: string } | null>(null);
@@ -145,7 +156,17 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   }
 
   function openFormat() {
-    setFmt({ ...DEFAULT_CAMPUS_STYLE, ...parseJsonObject(project.campusStyle, {}) } as any);
+    const saved = parseJsonObject(project.campusStyle, {}) as any;
+    setFmt({
+      ...DEFAULT_CAMPUS_STYLE,
+      ...saved,
+      margins: { ...DEFAULT_CAMPUS_STYLE.margins, ...(saved.margins || {}) },
+      body: { ...DEFAULT_CAMPUS_STYLE.body, ...(saved.body || {}) },
+      heading1: { ...DEFAULT_CAMPUS_STYLE.heading1, ...(saved.heading1 || {}) },
+      heading2: { ...DEFAULT_CAMPUS_STYLE.heading2, ...(saved.heading2 || {}) },
+      heading3: { ...DEFAULT_CAMPUS_STYLE.heading3, ...(saved.heading3 || {}) },
+      references: { ...DEFAULT_CAMPUS_STYLE.references, ...(saved.references || {}) },
+    } as any);
     setFormatOpen(true);
   }
 
@@ -447,6 +468,24 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     }
   }
 
+  async function runRoundtripAudit() {
+    setRoundtripBusy(true);
+    task.start("Audit DOCX", project.title, "Mengekspor lalu membaca ulang dokumen untuk mencari perubahan isi…");
+    try {
+      task.log("Membandingkan section, jumlah kata, dan tabel…");
+      const res = await fetch(`/api/projects/${params.id}/roundtrip-audit`, { method: "POST" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || "Audit DOCX belum bisa dijalankan.");
+      setRoundtrip(j as RoundtripAudit);
+      notify(j.ok ? "Audit DOCX selesai. Tidak ada kehilangan isi besar." : "Audit DOCX menemukan bagian yang perlu diperiksa.");
+    } catch (e: any) {
+      notify(e.message || "Audit DOCX belum bisa dijalankan.");
+    } finally {
+      task.stop();
+      setRoundtripBusy(false);
+    }
+  }
+
   async function exportPdf() {
     const preflightIssues = runFormatCheck();
     if (preflightIssues.some((issue) => issue.severity === "error")) {
@@ -485,6 +524,11 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   }
 
   async function applyTpl(id: string, name: string) {
+    const currentStyle = parseJsonObject(project.campusStyle, {}) as any;
+    if (Boolean(currentStyle.formatLocked)) {
+      notify("Profil format terkunci. Buka kunci di Format sebelum menerapkan template.");
+      return;
+    }
     setTplBusy(id);
     try {
       const res = await fetch(`/api/projects/${params.id}/apply-template`, {
@@ -530,6 +574,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           100
       )
     : 0;
+  const projectFormatLocked = Boolean((parseJsonObject(project.campusStyle, {}) as any).formatLocked);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -612,10 +657,10 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
             <button
               className="btn-outline flex items-center gap-1.5"
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
-              disabled={busyExport || busyPdf}
+              disabled={busyExport || busyPdf || roundtripBusy}
               title="Pilihan export skripsi (DOCX, PDF, Markdown, Pratinjau)"
             >
-              {busyExport || busyPdf ? (
+              {busyExport || busyPdf || roundtripBusy ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 <Download size={14} />
@@ -662,6 +707,20 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                   <div>
                     <div className="font-semibold text-ink-900">Markdown Package (.zip)</div>
                     <div className="text-[10px] text-ink-400">chapters/*.md + assets + manifest</div>
+                  </div>
+                </button>
+                <button
+                  className="w-full px-3 py-2.5 text-left hover:bg-ink-50 flex items-center gap-2.5 transition-colors"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    runRoundtripAudit();
+                  }}
+                  disabled={roundtripBusy}
+                >
+                  <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-ink-900">Audit kompatibilitas Word</div>
+                    <div className="text-[10px] text-ink-400">Export lalu baca ulang untuk cek isi dan tabel</div>
                   </div>
                 </button>
                 <div className="border-t border-ink-100 my-1" />
@@ -739,14 +798,14 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="label">Ukuran kertas</div>
-                  <select className="input" value={fmt.pageSize} onChange={(e) => setFmt({ ...fmt, pageSize: e.target.value })}>
+                  <select className="input" value={fmt.pageSize} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, pageSize: e.target.value })}>
                     <option value="A4">A4</option>
                     <option value="Letter">Letter</option>
                   </select>
                 </div>
                 <div>
                   <div className="label">Font</div>
-                  <input className="input" value={fmt.body.font} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, font: e.target.value } })} />
+                  <input className="input" value={fmt.body.font} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, font: e.target.value } })} />
                 </div>
               </div>
               <div>
@@ -764,6 +823,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                         min="0"
                         max="10"
                         value={fmt.margins[side]}
+                        disabled={Boolean(fmt.formatLocked)}
                         onChange={(e) => setFmt({ ...fmt, margins: { ...fmt.margins, [side]: Number(e.target.value) } })}
                       />
                     </div>
@@ -773,11 +833,11 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="label">Ukuran font (pt)</div>
-                  <input className="input" type="number" step="0.5" min="8" max="16" value={fmt.body.size} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, size: Number(e.target.value) } })} />
+                  <input className="input" type="number" step="0.5" min="8" max="16" value={fmt.body.size} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, size: Number(e.target.value) } })} />
                 </div>
                 <div>
                   <div className="label">Spasi baris</div>
-                  <select className="input" value={fmt.body.lineSpacing} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, lineSpacing: Number(e.target.value) } })}>
+                  <select className="input" value={fmt.body.lineSpacing} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, body: { ...fmt.body, lineSpacing: Number(e.target.value) } })}>
                     <option value={1}>1 (single)</option>
                     <option value={1.15}>1.15</option>
                     <option value={1.5}>1.5</option>
@@ -788,14 +848,29 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="label">Ukuran heading bab (pt)</div>
-                  <input className="input" type="number" step="0.5" min="10" max="16" value={fmt.heading1.size} onChange={(e) => setFmt({ ...fmt, heading1: { ...fmt.heading1, size: Number(e.target.value) } })} />
+                  <input className="input" type="number" step="0.5" min="10" max="16" value={fmt.heading1.size} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, heading1: { ...fmt.heading1, size: Number(e.target.value) } })} />
                 </div>
                 <div className="flex items-end pb-1">
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={fmt.heading1.centered} onChange={(e) => setFmt({ ...fmt, heading1: { ...fmt.heading1, centered: e.target.checked } })} />
+                    <input type="checkbox" checked={fmt.heading1.centered} disabled={Boolean(fmt.formatLocked)} onChange={(e) => setFmt({ ...fmt, heading1: { ...fmt.heading1, centered: e.target.checked } })} />
                     Judul bab rata tengah
                   </label>
                 </div>
+              </div>
+              <div className={`rounded-lg border p-3 text-sm ${fmt.formatLocked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-ink-200 bg-ink-50 text-ink-600"}`}>
+                <label className="flex items-center gap-2 font-semibold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(fmt.formatLocked)}
+                    onChange={(e) => setFmt({ ...fmt, formatLocked: e.target.checked })}
+                  />
+                  {fmt.formatLocked ? "Profil format terkunci" : "Kunci profil format setelah disimpan"}
+                </label>
+                <p className="text-[11px] mt-1 opacity-80">
+                  {fmt.formatLocked
+                    ? "Buka centang ini untuk mengubah format atau menerapkan template baru."
+                    : "Kunci profil supaya format export tidak berubah saat template atau pengaturan lain dipakai."}
+                </p>
               </div>
               <div className="text-[11px] text-ink-400">
                 Format dipakai saat <b>Export DOCX</b>. Tipografi di editor web tidak berubah (editor memakai layout layar).
@@ -805,7 +880,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               <button className="btn-primary" onClick={saveFormat} disabled={fmtBusy}>
                 {fmtBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Simpan Format
               </button>
-              <button className="btn-outline" onClick={() => setFmt({ ...DEFAULT_CAMPUS_STYLE })}>Reset ke default</button>
+              <button className="btn-outline" onClick={() => setFmt({ ...DEFAULT_CAMPUS_STYLE, formatLocked: false })} disabled={Boolean(fmt.formatLocked) || fmtBusy}>Reset ke default</button>
             </div>
           </div>
         </div>
@@ -826,8 +901,13 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               Format proyek (margin, font, spasi, indentasi, heading, sitasi) diganti mengikuti template. Berlaku untuk
               proyek baru maupun hasil impor.
             </p>
+            {projectFormatLocked && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Profil format sedang terkunci. Buka kuncinya dari tombol Format sebelum menerapkan template.
+              </div>
+            )}
             <label className="flex items-start gap-2 text-sm border rounded-lg p-3 bg-amber-50/60 cursor-pointer">
-              <input type="checkbox" className="mt-0.5" checked={reformat} onChange={(e) => setReformat(e.target.checked)} />
+              <input type="checkbox" className="mt-0.5" checked={reformat} disabled={projectFormatLocked} onChange={(e) => setReformat(e.target.checked)} />
               <span>
                 <b>Sekaligus rapikan isi dokumen yang sudah ada</b>
                 <span className="block text-xs text-gray-500">
@@ -845,7 +925,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                     {t.config.body?.font} {t.config.body?.size}pt • spasi {t.config.body?.lineSpacing} • sitasi {t.config.citationStyle}
                   </div>
                 </div>
-                <button className="btn-primary !px-3 !py-1.5 text-sm" disabled={tplBusy === t.id} onClick={() => applyTpl(t.id, t.name)}>
+                <button className="btn-primary !px-3 !py-1.5 text-sm" disabled={projectFormatLocked || tplBusy === t.id} onClick={() => applyTpl(t.id, t.name)}>
                   {tplBusy === t.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Terapkan
                 </button>
               </div>
@@ -885,6 +965,52 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                 {is.msg}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {roundtrip && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6" onClick={() => setRoundtrip(null)}>
+          <div className="card p-5 w-full max-w-2xl max-h-[82vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="roundtrip-title">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold flex items-center gap-2" id="roundtrip-title">
+                  <ShieldCheck size={16} className={roundtrip.ok ? "text-emerald-600" : "text-amber-600"} /> Audit kompatibilitas Word
+                </div>
+                <p className="text-xs text-ink-500 mt-1">DOCX dibuat lalu dibaca ulang untuk memeriksa struktur isi sebelum kamu mengirimkannya ke pembimbing.</p>
+              </div>
+              <button className="btn-ghost !px-2" onClick={() => setRoundtrip(null)} aria-label="Tutup audit DOCX"><X size={16} /></button>
+            </div>
+            <div className={`rounded-lg p-3 text-sm ${roundtrip.ok ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+              {roundtrip.ok ? "Struktur utama dan tabel berhasil melewati pemeriksaan." : "Ada bagian yang perlu kamu cek sebelum dokumen dianggap aman untuk round-trip."}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              {[
+                ["Section", `${roundtrip.original.sections} → ${roundtrip.roundtrip.sections}`],
+                ["Kata", `${roundtrip.original.words} → ${roundtrip.roundtrip.words}`],
+                ["Tabel", `${roundtrip.original.tables} → ${roundtrip.roundtrip.tables}`],
+                ["File", roundtrip.filename.replace(/\.docx$/i, "")],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-ink-100 bg-ink-50/50 p-2 min-w-0">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-400">{label}</div>
+                  <div className="text-sm font-semibold text-ink-800 truncate" title={value}>{value}</div>
+                </div>
+              ))}
+            </div>
+            {roundtrip.issues.length ? (
+              <div className="space-y-2">
+                {roundtrip.issues.map((issue, index) => (
+                  <div key={`${issue.code}-${index}`} className={`rounded-lg p-2.5 text-sm ${issue.severity === "error" ? "bg-rose-50 text-rose-800" : "bg-amber-50 text-amber-800"}`}>
+                    <span className="font-mono text-[10px] opacity-60 mr-1.5">{issue.code}</span>{issue.msg}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-ink-500 border border-dashed border-ink-200 rounded-lg p-3">Tidak ada peringatan dari pemeriksaan ini.</div>
+            )}
+            {roundtrip.missingSections.length > 0 && (
+              <div className="text-xs text-ink-500">Section yang perlu dicek: {roundtrip.missingSections.join(", ")}</div>
+            )}
           </div>
         </div>
       )}

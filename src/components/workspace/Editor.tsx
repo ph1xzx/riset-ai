@@ -22,6 +22,7 @@ import {
 import { stripHtml, parseJsonArray } from "@/lib/json";
 import { uploadFile } from "@/lib/upload";
 import { countTables, normalizeTableHtml } from "@/lib/table-format";
+import { cleanWordPaste } from "@/lib/word-paste";
 
 /* ---------------- custom nodes ---------------- */
 
@@ -89,6 +90,42 @@ function wordDiff(a: string, b: string): { left: { t: string; del: boolean }[]; 
   return { left, right };
 }
 
+type StyleInfo = {
+  block: string;
+  marks: string[];
+  inTable: boolean;
+  selectedCharacters: number;
+};
+
+function readStyleInfo(ed: TTEditor): StyleInfo {
+  const parent = ed.state.selection.$from.parent;
+  const blockLabels: Record<string, string> = {
+    paragraph: "Paragraf",
+    heading: "Heading",
+    blockquote: "Kutipan",
+    bulletList: "Daftar poin",
+    orderedList: "Daftar bernomor",
+    codeBlock: "Blok kode",
+    tableCell: "Sel tabel",
+    tableHeader: "Header tabel",
+  };
+  const block = parent.type.name === "heading" ? `Heading ${parent.attrs.level}` : blockLabels[parent.type.name] || parent.type.name;
+  const marks = [
+    ed.isActive("bold") ? "Tebal" : "",
+    ed.isActive("italic") ? "Miring" : "",
+    ed.isActive("underline") ? "Garis bawah" : "",
+    ed.isActive("strike") ? "Coret" : "",
+    ed.isActive("link") ? "Tautan" : "",
+    ed.isActive("highlight") ? "Sorotan" : "",
+  ].filter(Boolean);
+  return {
+    block,
+    marks,
+    inTable: ed.isActive("table"),
+    selectedCharacters: ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, " ").length,
+  };
+}
+
 /* ---------------- component ---------------- */
 
 type Props = {
@@ -140,6 +177,8 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
   const [ctxBusy, setCtxBusy] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [aiHistory, setAiHistory] = useState<Array<{ action: string; before: string; after: string; createdAt: string }>>([]);
+  const [styleInspectorOpen, setStyleInspectorOpen] = useState(false);
+  const [styleInfo, setStyleInfo] = useState<StyleInfo | null>(null);
 
   useEffect(() => {
     try {
@@ -181,14 +220,16 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
     content: section.content || "",
     editorProps: {
       attributes: { class: "tiptap", "data-placeholder": "Tulis di sini — atau klik Generate AI…" },
+      transformPastedHTML: cleanWordPaste,
     },
+    onCreate: ({ editor }) => setStyleInfo(readStyleInfo(editor)),
+    onTransaction: ({ editor }) => setStyleInfo(readStyleInfo(editor)),
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
       if (from !== to) {
         setSel({ from, to, text: editor.state.doc.textBetween(from, to, " ") });
-      } else if (sel && from === to) {
-        setSel(null);
-      }
+      } else setSel(null);
+      setStyleInfo(readStyleInfo(editor));
     },
   });
 
@@ -918,6 +959,18 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
           <button className="btn-outline !py-1.5 text-xs" onClick={() => setHistoryOpen(true)} title="Lihat riwayat perubahan AI di browser ini">
             <History size={13} /> <span className="hidden 2xl:inline">Riwayat AI</span>
           </button>
+          <button
+            type="button"
+            className={`btn-outline !py-1.5 text-xs ${styleInspectorOpen ? "bg-brand-50 text-brand-700 border-brand-200" : ""}`}
+            onClick={() => {
+              setStyleInspectorOpen((open) => !open);
+              if (editor) setStyleInfo(readStyleInfo(editor));
+            }}
+            aria-pressed={styleInspectorOpen}
+            title="Lihat format blok dan teks yang sedang dipilih"
+          >
+            <Search size={13} /> <span className="hidden 2xl:inline">Inspector</span>
+          </button>
           <button className="btn-outline !py-1.5 text-xs" onClick={() => paraphrase()} disabled={paraBusy} title="Tulis ulang section dengan kata-kata baru; sitasi dijaga">
             {paraBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
             Parafrase
@@ -942,6 +995,26 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
           </div>
         )}
       </div>
+
+      {styleInspectorOpen && styleInfo && (
+        <div className="border-b border-ink-100 bg-ink-50/70 px-8 py-2">
+          <div className="max-w-[72ch] mx-auto flex flex-wrap items-center gap-2 text-[11px] text-ink-600">
+            <span className="font-semibold text-ink-800">Inspector format</span>
+            <span className="chip bg-white text-ink-600">Blok: {styleInfo.block}</span>
+            <span className="chip bg-white text-ink-600">Pilihan: {styleInfo.selectedCharacters} karakter</span>
+            {styleInfo.inTable && <span className="chip bg-amber-100 text-amber-700">Di dalam tabel</span>}
+            {styleInfo.marks.length ? (
+              styleInfo.marks.map((mark) => <span key={mark} className="chip bg-brand-100 text-brand-700">{mark}</span>)
+            ) : (
+              <span className="chip bg-white text-ink-400">Tanpa mark</span>
+            )}
+            <span className="text-ink-400 basis-full sm:basis-auto">Paste dari Word dibersihkan otomatis. Profil format kampus dipakai saat export.</span>
+            <button type="button" className="btn-ghost !px-1.5 !py-1 ml-auto" onClick={() => setStyleInspectorOpen(false)} aria-label="Tutup inspector format">
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* toolbar */}
       <div className="border-b border-ink-100 bg-white px-8 py-1.5 sticky top-[64px] z-10">

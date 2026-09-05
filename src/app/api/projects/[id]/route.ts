@@ -1,9 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { parseJsonObject } from "@/lib/json";
 
 export const runtime = "nodejs";
 
 type Ctx = { params: { id: string } };
+
+function stableValue(value: any): any {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === "object") {
+    return Object.keys(value)
+      .sort()
+      .reduce((out, key) => {
+        out[key] = stableValue(value[key]);
+        return out;
+      }, {} as Record<string, any>);
+  }
+  return value;
+}
+
+function sameFormat(a: any, b: any): boolean {
+  const withoutLock = (value: any) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const { formatLocked: _formatLocked, ...rest } = value;
+    return rest;
+  };
+  return JSON.stringify(stableValue(withoutLock(a))) === JSON.stringify(stableValue(withoutLock(b)));
+}
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const project = await prisma.project.findUnique({
@@ -31,7 +54,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (typeof b.yearTo === "number" || b.yearTo == null) data.yearTo = b.yearTo ?? null;
   if (typeof b.minCitations === "number") data.minCitations = b.minCitations;
   if (typeof b.includePreprint === "boolean") data.includePreprint = b.includePreprint;
-  if (b.campusStyle && typeof b.campusStyle === "object") data.campusStyle = JSON.stringify(b.campusStyle);
+  if (b.campusStyle && typeof b.campusStyle === "object") {
+    const currentProject = await prisma.project.findUnique({
+      where: { id: params.id },
+      select: { campusStyle: true },
+    });
+    if (!currentProject) return NextResponse.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+    const currentStyle = parseJsonObject(currentProject.campusStyle, {});
+    const currentLocked = Boolean((currentStyle as any).formatLocked);
+    const nextLocked = Boolean((b.campusStyle as any).formatLocked);
+    if (currentLocked && nextLocked && !sameFormat(currentStyle, b.campusStyle)) {
+      return NextResponse.json({ error: "Profil format terkunci. Buka kunci dulu sebelum mengubahnya." }, { status: 409 });
+    }
+    data.campusStyle = JSON.stringify(b.campusStyle);
+  }
   if (b.structure && Array.isArray(b.structure)) {
     // replace entire structure
     await prisma.section.deleteMany({ where: { projectId: params.id } });

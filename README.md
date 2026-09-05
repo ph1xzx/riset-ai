@@ -9,10 +9,12 @@ Mengintegrasikan 2 alur yang sudah diverifikasi:
   status (EMPTY → DRAFTING → AI_DRAFT → USER_EDITED → APPROVED) → format kampus → ekspor DOCX.
 - **Jenni-style** — editor TipTap dengan ghost-text autocomplete (Tab/→ terima, Esc tolak), AI Edit pada
   teks terpilih dengan diff, AI Chat dengan konteks (section/dokumen/library), Find Papers (OpenAlex +
-  Crossref, keyless), library per proyek, Reviews (cek penulisan) dan **cek sitasi** (verifikasi sitasi
+  Crossref, keyless, plus Unpaywall opsional untuk link PDF open access dari DOI), library per proyek, Reviews (cek penulisan) dan **cek sitasi** (verifikasi sitasi
   terhadap Crossref + daftar pustaka dokumen — klik → bukti/DOI).
 - **Ekstra sesuai request** — impor skripsi `.docx` (struktur custom dari heading dokumen, format kampus
-  diekstrak otomatis) dan upload skripsi lama sebagai **pedoman** (struktur + margin/font/spasi).
+  diekstrak otomatis), paste dari Word yang dibersihkan otomatis, audit DOCX round-trip, dan upload skripsi
+  lama sebagai **pedoman** (struktur + margin/font/spasi). Profil format bisa dikunci agar template tidak
+  mengubah aturan export tanpa sengaja. Inspector format menunjukkan blok, mark, dan konteks tabel yang aktif.
 - **Gambar** — sisipkan gambar ke editor via modal 3 tab: **Generate AI** (Gemini native
   `generateContent` + `responseModalities: [TEXT, IMAGE]` jika Base URL Google, atau
   `/images/generations` untuk provider OpenAI-compatible — model configurable, default
@@ -84,7 +86,7 @@ Tanpa Supabase, unggahan DOCX memakai fallback lokal (`/api/uploads` + folder `.
 | `prisma/schema.prisma` | 16 model (Settings, Project, ResearchMemory, Section, Source, Collection, Citation, ChatThread, Review, AIRun, ExportJob…) |
 | `src/lib/ai/provider.ts` | BYOK runtime OpenAI-compatible + log `AIRun`; `AIConfigError` saat key/model belum diset |
 | `src/lib/citations.ts` | Validasi token `[[SOURCE_<id>]]` + render APA7/IEEE/Harvard/Vancouver |
-| `src/lib/academic.ts` | Pencarian OpenAlex + Crossref (keyless), dedup DOI |
+| `src/lib/academic.ts` | Pencarian OpenAlex + Crossref, enrichment Unpaywall opsional, dedup DOI |
 | `src/lib/retrieval.ts` | Konteks retrieval keyword (modul terisolasi, bisa diganti embedding) |
 | `src/lib/docx-import.ts` | Parse DOCX (mammoth) → section custom dari heading |
 | `src/lib/docx-style.ts` | Ekstrak format kampus (jszip: margin/font/ukuran/spasi) |

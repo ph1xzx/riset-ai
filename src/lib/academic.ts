@@ -1,5 +1,5 @@
 // Academic search: OpenAlex (primary) + Crossref (fallback/merge).
-// Both are free and keyless — Find Papers works out of the box.
+// Unpaywall optionally enriches DOI results with the best open-access link.
 
 export type AcademicSource = {
   id: string;
@@ -44,7 +44,7 @@ async function searchOpenAlex(f: SearchFilters): Promise<AcademicSource[]> {
   const params = new URLSearchParams({
     search: f.query,
     per_page: String(f.limit ?? 20),
-    mailto: "riset-ai-local@example.com",
+    mailto: process.env.CROSSREF_MAILTO || "riset-ai-local@example.com",
     select: "id,doi,title,publication_year,authorships,primary_location,abstract_inverted_index,cited_by_count,open_access,type,keywords",
   });
   if (filterParts.length) params.set("filter", filterParts.join(","));
@@ -94,7 +94,7 @@ async function searchCrossref(f: SearchFilters): Promise<AcademicSource[]> {
   const params = new URLSearchParams({
     query: f.query,
     rows: String(f.limit ?? 20),
-    "mailto": "riset-ai-local@example.com",
+    "mailto": process.env.CROSSREF_MAILTO || "riset-ai-local@example.com",
     "select": "DOI,title,author,container-title,issued,abstract,is-referenced-by-count,link,type,subject,ORCID",
   });
   if (f.yearFrom || f.yearTo) {
@@ -127,6 +127,55 @@ async function searchCrossref(f: SearchFilters): Promise<AcademicSource[]> {
       type: w.type ?? "article",
       keywords: (w.subject ?? []).slice(0, 8),
       impactFactor: null,
+    };
+  });
+}
+
+type UnpaywallRecord = {
+  is_oa?: boolean;
+  best_oa_location?: {
+    url?: string;
+    url_for_pdf?: string | null;
+    url_for_landing_page?: string | null;
+  } | null;
+};
+
+/**
+ * DOI metadata providers are good at identifying a paper, but often do not
+ * expose the most useful legal PDF location. Unpaywall fills that gap when a
+ * real contact email is configured. Failures are intentionally soft so paper
+ * search still works when the enrichment service is unavailable.
+ */
+async function enrichOpenAccess(list: AcademicSource[]): Promise<AcademicSource[]> {
+  const email = process.env.UNPAYWALL_EMAIL || process.env.CROSSREF_MAILTO;
+  if (!email) return list;
+
+  const candidates = list.filter((source) => source.doi).slice(0, 8);
+  const settled = await Promise.allSettled(
+    candidates.map(async (source) => {
+      const res = await fetch(
+        `https://api.unpaywall.org/v2/${encodeURIComponent(source.doi!)}?email=${encodeURIComponent(email)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      if (!res.ok) throw new Error(`Unpaywall ${res.status}`);
+      return { doi: source.doi!.toLowerCase(), data: (await res.json()) as UnpaywallRecord };
+    })
+  );
+
+  const byDoi = new Map<string, UnpaywallRecord>();
+  for (const item of settled) {
+    if (item.status === "fulfilled") byDoi.set(item.value.doi, item.value.data);
+  }
+
+  return list.map((source) => {
+    const data = source.doi ? byDoi.get(source.doi.toLowerCase()) : undefined;
+    const best = data?.best_oa_location;
+    if (!data || !best) return source;
+    return {
+      ...source,
+      openAccess: source.openAccess || Boolean(data.is_oa),
+      pdfUrl: best.url_for_pdf || best.url || source.pdfUrl,
+      url: best.url_for_landing_page || best.url || source.url,
     };
   });
 }
@@ -180,15 +229,24 @@ export async function searchPapers(f: SearchFilters): Promise<{ results: Academi
   } catch {}
 
   const settled = await Promise.allSettled(tasks);
-  const lists = settled.filter((s): s is PromiseFulfilledResult<AcademicSource[]> => s.status === "fulfilled").map((s) => s.value);
-  const used = settled.filter((s) => s.status === "fulfilled").length;
+  const providerNames = ["openalex", "crossref"];
+  const fulfilled = settled.flatMap((result, index) =>
+    result.status === "fulfilled" ? [{ name: providerNames[index], list: result.value }] : []
+  );
+  const lists = fulfilled.map((item) => item.list);
 
   if (!lists.length) throw new Error("All academic providers failed");
 
   let merged = dedupeByDoi(lists.flat()).slice(0, limit * 2);
   if (f.minCitations) merged = merged.filter((s) => s.citationCount >= f.minCitations!);
+  const beforeEnrichment = merged;
+  merged = await enrichOpenAccess(merged);
   merged = rank(merged).slice(0, limit);
-  return { results: merged, sources: used ? (lists[0]?.length ? ["openalex"] : []).concat(lists[1]?.length ? ["crossref"] : []) : [] };
+  const sources = fulfilled.filter((item) => item.list.length).map((item) => item.name);
+  if (merged.some((source) => source.openAccess && !beforeEnrichment.find((old) => old.id === source.id)?.openAccess)) {
+    sources.push("unpaywall");
+  }
+  return { results: merged, sources };
 }
 
 export async function resolvePaperById(
@@ -199,7 +257,8 @@ export async function resolvePaperById(
   if (id.toLowerCase().startsWith("10.")) {
     try {
       const r = await searchCrossref({ query: id, limit: 1 });
-      return r[0] ?? null;
+      const enriched = await enrichOpenAccess(r);
+      return enriched[0] ?? null;
     } catch {
       return null;
     }

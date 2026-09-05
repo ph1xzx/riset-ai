@@ -24,6 +24,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!project) return NextResponse.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
 
   const current = parseJsonObject(project.campusStyle, {});
+  if (Boolean((current as any).formatLocked)) {
+    return NextResponse.json({ error: "Profil format terkunci. Buka kunci dulu sebelum menerapkan template." }, { status: 409 });
+  }
   const campusStyle = mergeStyle(mergeStyle(DEFAULT_CAMPUS_STYLE as any, current), JSON.parse(tpl.config || "{}"));
   const citationStyle = (campusStyle as any).citationStyle || project.citationStyle;
 
