@@ -928,8 +928,8 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
     <div onKeyDown={keydown} className="h-full flex flex-col">
       {task.task && <TaskOverlay task={task.task} onCancel={task.cancel} />}
       {/* ribbon section: status and AI actions */}
-      <div className="px-3 sm:px-4 py-2 border-b border-ink-200 bg-ink-50/60 sticky top-0 z-10 overflow-x-auto [scrollbar-width:thin]">
-        <div className="flex items-center gap-1.5 min-w-max max-w-[84rem] mx-auto">
+      <div className="px-3 sm:px-4 py-2 border-b border-ink-200 bg-ink-50/60 sticky top-0 z-10 overflow-x-visible md:overflow-x-auto no-scrollbar">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-1.5 min-w-0 md:min-w-max max-w-[84rem] mx-auto">
           <div className="min-w-[170px] max-w-[28vw] shrink-0 pr-2">
             <div className="text-[9px] font-mono uppercase tracking-[0.12em] text-ink-400 leading-none mb-1">Section aktif</div>
             <h2 className="text-sm font-bold truncate">{section.title}</h2>
@@ -1024,7 +1024,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
       )}
 
       {/* toolbar */}
-      <div className="border-b border-ink-100 bg-white px-4 py-1.5 sticky top-[60px] z-10">
+      <div className="border-b border-ink-100 bg-white px-2 sm:px-4 py-1.5 md:sticky md:top-[60px] z-10">
         <div className="flex items-center gap-0.5 max-w-[72ch] mx-auto flex-wrap">
           <TBtn onClick={() => editor.chain().focus().undo().run()} title="Undo"><Undo2 size={14} /></TBtn>
           <TBtn onClick={() => editor.chain().focus().redo().run()} title="Redo"><Redo2 size={14} /></TBtn>

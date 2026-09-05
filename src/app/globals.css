@@ -118,6 +118,13 @@ body {
 .chip {
   @apply inline-flex items-center gap-1 rounded-none px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide font-medium;
 }
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 .toast {
   @apply fixed bottom-5 right-5 z-[100] rounded-lg px-4 py-3 text-sm shadow-lg text-white;
 }

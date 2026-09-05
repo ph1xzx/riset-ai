@@ -594,7 +594,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
       {/* TENGAH: editor */}
       <div className="flex-1 min-w-0 flex flex-col border-r border-ink-200 bg-white">
-        <div className="h-14 border-b border-ink-200 bg-white flex items-center gap-2 px-2 sm:px-3 shrink-0 overflow-x-auto [scrollbar-width:thin]">
+        <div className="min-h-14 md:h-14 border-b border-ink-200 bg-white flex flex-wrap md:flex-nowrap items-center gap-2 px-2 sm:px-3 py-2 md:py-0 shrink-0 md:overflow-x-auto no-scrollbar">
           <button
             className={`btn-ghost !h-9 !w-9 !p-0 justify-center shrink-0 border border-transparent hover:border-ink-200 ${showLeft ? "text-brand-600" : "text-ink-400"}`}
             title={showLeft ? "Sembunyikan sidebar struktur" : "Tampilkan sidebar struktur"}
@@ -603,7 +603,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
             <PanelLeft size={16} />
           </button>
           <span className="h-8 w-px bg-ink-200 shrink-0" />
-          <div className="flex items-center gap-2 min-w-[220px] max-w-[min(31vw,360px)] shrink-0">
+          <div className="flex items-center gap-2 min-w-[150px] sm:min-w-[220px] max-w-[min(42vw,360px)] sm:max-w-[min(31vw,360px)] shrink-0">
             <FileText size={16} className="text-brand-600 shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="text-[9px] font-mono uppercase tracking-[0.12em] text-ink-400 leading-none mb-1">Dokumen kerja</div>
