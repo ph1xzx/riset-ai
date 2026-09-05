@@ -446,6 +446,7 @@ export async function exportProjectToDocx(projectId: string): Promise<{ buffer: 
 
   for (const sec of project.sections) {
     const isH1 = sec.level === 1;
+    const isDeepHeading = sec.level >= 3;
     // bab baru / daftar pustaka / lampiran = section Word baru (reset aturan nomor)
     const isBabStart = isH1 && /^(bab\s|daftar pustaka|lampiran)/i.test(sec.title);
     if (isBabStart) groups.push({ babStart: true, blocks: [] });
@@ -454,11 +455,24 @@ export async function exportProjectToDocx(projectId: string): Promise<{ buffer: 
       // kapital hanya untuk judul bab (heading1.uppercase); sub-bab dibiarkan
       // sesuai dokumen asli ("1.1 Latar Belakang", bukan "1.1 LATAR BELAKANG")
       const titleText = isH1 && style.heading1.uppercase ? sec.title.toUpperCase() : sec.title;
+      const heading =
+        sec.level === 1
+          ? HeadingLevel.HEADING_1
+          : sec.level === 2
+          ? HeadingLevel.HEADING_2
+          : sec.level === 3
+          ? HeadingLevel.HEADING_3
+          : sec.level === 4
+          ? HeadingLevel.HEADING_4
+          : sec.level === 5
+          ? HeadingLevel.HEADING_5
+          : HeadingLevel.HEADING_6;
+      const headingSize = isH1 ? style.heading1.size : isDeepHeading ? style.heading3?.size ?? style.body.size : style.heading2.size;
       g.blocks.push(
         new Paragraph({
-          heading: isH1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+          heading,
           alignment: isH1 ? (style.heading1.centered ? AlignmentType.CENTER : AlignmentType.LEFT) : AlignmentType.LEFT,
-          spacing: { before: isH1 ? 240 : 160, after: 120 },
+          spacing: { before: isH1 ? 240 : isDeepHeading ? 120 : 160, after: 120 },
           indent: { left: 0, firstLine: 0 }, // heading selalu di margin kiri, tanpa indentasi
           // halaman baru untuk tiap bab, kecuali yang pertama di group (section break
           // Word sudah memisah halaman)
@@ -466,8 +480,8 @@ export async function exportProjectToDocx(projectId: string): Promise<{ buffer: 
           children: [
             new TextRun({
               text: titleText,
-              bold: true,
-              size: (isH1 ? style.heading1.size : style.heading2.size) * 2,
+              bold: isH1 ? style.heading1.bold : isDeepHeading ? style.heading3?.bold ?? false : style.heading2.bold,
+              size: headingSize * 2,
               font: style.body.font,
             }),
           ],

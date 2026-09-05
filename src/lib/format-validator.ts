@@ -79,6 +79,15 @@ export function validateFormat(
       const m = (s.title || "").match(/^(\d+\.\d+)(?!\.)/);
       if (m) seenH2.add(m[1]);
     }
+    if (s.level >= 3) {
+      const m = (s.title || "").match(/^(\d+\.\d+\.\d+)(?!\.)/);
+      if (m) {
+        const parent = m[1].split(".").slice(0, 2).join(".");
+        if (!seenH2.has(parent)) {
+          issues.push({ code: "LEVEL_SKIP", severity: "warn", msg: `Anak subbab ${m[1]} muncul tanpa subbab induk ${parent}` });
+        }
+      }
+    }
     const h3s = s.content.match(/<h3[^>]*>\s*(\d+\.\d+\.\d+)(?!\.)/g) || [];
     for (const h of h3s) {
       const num = h.match(/(\d+\.\d+\.\d+)/)![1];

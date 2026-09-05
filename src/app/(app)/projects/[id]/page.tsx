@@ -341,7 +341,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     const res = await fetch(`/api/projects/${params.id}/sections`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: level === 2 ? "Sub-bab baru" : `BAB ${n}`, level }),
+      body: JSON.stringify({ title: level === 3 ? "Sub-sub-bab baru" : level === 2 ? "Sub-bab baru" : `BAB ${n}`, level }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => null);

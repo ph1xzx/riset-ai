@@ -32,7 +32,7 @@ export async function buildMarkdownPackage(
     return `assets/${name}`;
   };
 
-  // group section → chapter files (level 1 = file baru; level 2 = ## di dalamnya)
+  // group section → chapter files (level 1 = file baru; level 2 sampai 6 = heading di dalamnya)
   const chapters: { fileName: string; title: string; parts: string[] }[] = [];
   const used = new Set<string>();
   for (const sec of project.sections) {
@@ -43,7 +43,10 @@ export async function buildMarkdownPackage(
       chapters.push({ fileName: fn, title: sec.title, parts: [`# ${sec.title}`, ""] });
     }
     const ch = chapters[chapters.length - 1];
-    if (sec.level === 2) ch.parts.push(`## ${sec.title}`, "");
+    if (sec.level >= 2) {
+      const depth = Math.min(sec.level, 6);
+      ch.parts.push(`${"#".repeat(depth)} ${sec.title}`, "");
+    }
     ch.parts.push(htmlToMarkdown(sec.content || "", mapImg));
     ch.parts.push("");
   }

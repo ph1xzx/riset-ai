@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       projectId: params.id,
       parentId: b.parentId ?? null,
       title: b.title || "Section baru",
-      level: b.level === 2 ? 2 : 1,
+      level: Math.min(6, Math.max(1, Math.trunc(Number(b.level) || 1))),
       order: (max._max.order ?? -1) + 1,
       prompt: b.prompt || "",
     },

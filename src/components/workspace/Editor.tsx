@@ -1384,7 +1384,7 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
                   <select className="input" value={imgSection || section.id} onChange={(e) => setImgSection(e.target.value)}>
                     {(project.sections || []).map((s: any) => (
                       <option key={s.id} value={s.id}>
-                        {s.level === 2 ? "– " : ""}
+                        {s.level >= 4 ? "　　　　" : s.level === 3 ? "　　" : s.level === 2 ? "　" : ""}
                         {s.title}
                         {s.id === section.id ? " (aktif)" : ""}
                       </option>

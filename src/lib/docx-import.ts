@@ -2,7 +2,7 @@ import mammoth from "mammoth";
 import { normalizeTableHtml } from "./table-format";
 
 export type ImportedBlock = {
-  kind: "h1" | "h2" | "h3" | "body";
+  kind: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "body";
   text: string;
   html: string;
 };
@@ -10,7 +10,7 @@ export type ImportedBlock = {
 export type ImportedDoc = {
   title: string;
   blocks: ImportedBlock[];
-  sections: { title: string; level: 1 | 2; html: string }[];
+  sections: { title: string; level: number; html: string }[];
   rawHtml: string;
 };
 
@@ -28,9 +28,15 @@ const HEADING_STYLES = [
   "p[style-name='Heading 2'] => h2:fresh",
   "p[style-name='Heading 3'] => h3:fresh",
   "p[style-name='Heading4'] => h3:fresh",
+  "p[style-name='Heading 4'] => h4:fresh",
+  "p[style-name='Heading 5'] => h5:fresh",
+  "p[style-name='Heading 6'] => h6:fresh",
   "p[style-name='heading 1'] => h1:fresh",
   "p[style-name='heading 2'] => h2:fresh",
   "p[style-name='heading 3'] => h3:fresh",
+  "p[style-name='heading 4'] => h4:fresh",
+  "p[style-name='heading 5'] => h5:fresh",
+  "p[style-name='heading 6'] => h6:fresh",
   "p[style-name='Title'] => h1:fresh",
   "p[style-name='Judul'] => h1:fresh",
   "p[style-name='Sub Judul'] => h2:fresh",
@@ -38,6 +44,9 @@ const HEADING_STYLES = [
   "p[outline-level=1] => h1:fresh",
   "p[outline-level=2] => h2:fresh",
   "p[outline-level=3] => h3:fresh",
+  "p[outline-level=4] => h4:fresh",
+  "p[outline-level=5] => h5:fresh",
+  "p[outline-level=6] => h6:fresh",
 ];
 
 function stripTags(html: string): string {
@@ -54,7 +63,7 @@ function stripTags(html: string): string {
 //   "BAB I PENDAHULUAN" / "BAB 1 PENDAHULUAN" / "Bagian 1 ..."  → h1
 //   "1.1 Latar Belakang" / "2.3.1 Uji Validitas"                → h2/h3
 const RE_BAB = /^(BAB|Bagian|Bab)\s+[IVX0-9]+[\s.:—-]*[A-Z]?/i;
-const RE_SUB = /^(\d{1,2})\.(\d{1,2})(?:\.(\d{1,2}))?\s+([A-Z][^.]{3,80})$/;
+const RE_SUB = /^((?:\d{1,2}\.){1,5}\d{1,2})\s+([A-Za-zÀ-ÿ0-9][^.!?]{2,118})$/i;
 // heading bawaan front-matter / back-matter (sering style Normal + bold).
 // Di-anchor akhir agar "Daftar pustaka yang lengkap adalah..." TIDAK jadi heading.
 const RE_BACKMATTER =
@@ -94,11 +103,29 @@ function detectHeading(text: string): "h1" | "h2" | "h3" | null {
   if (RE_BACKMATTER.test(text) && text.length < 90) return "h1";
   if (RE_BAB.test(text) && text.length < 90) return "h1";
   const m = text.match(RE_SUB);
-  if (m) {
-    if (m[3]) return "h3"; // x.y.z
+  if (m && text.length <= 120) {
+    if (m[1].split(".").length >= 3) return "h3"; // x.y.z atau lebih dalam
     return "h2"; // x.y
   }
   return null;
+}
+
+function numericHeadingLevel(text: string): number | null {
+  const match = text.match(/^((?:\d{1,2}\.)+\d{1,2})(?=\s|$)/);
+  return match ? match[1].split(".").length : null;
+}
+
+function blockHeadingLevel(block: ImportedBlock): number {
+  const numericLevel = numericHeadingLevel(block.text);
+  if (numericLevel) return numericLevel;
+  if (/^h[1-6]$/.test(block.kind)) return Number(block.kind.slice(1));
+  return 1;
+}
+
+function isStructuralHeading(block: ImportedBlock): boolean {
+  // Ringkasan sistematika sering memakai Heading 3 untuk menulis ulang
+  // "BAB I ...", "BAB II ...". Itu isi narasi, bukan section baru.
+  return /^h[2-6]$/.test(block.kind) && !(block.kind !== "h2" && /^BAB\s/i.test(block.text));
 }
 
 function chapterNumber(text: string): number | null {
@@ -129,9 +156,9 @@ function normalizeSubheadingNumbers(blocks: ImportedBlock[]): ImportedBlock[] {
       activeChapter = chapterNumber(block.text);
       return block;
     }
-    if (!activeChapter || (block.kind !== "h2" && block.kind !== "h3")) return block;
+    if (!activeChapter || !/^h[2-6]$/.test(block.kind)) return block;
 
-    const match = block.text.match(/^(\d{1,2})(\.\d{1,2}(?:\.\d{1,2})?)(?=\s|$)([\s\S]*)$/);
+    const match = block.text.match(/^(\d{1,2})((?:\.\d{1,2})+)(?=\s|$)([\s\S]*)$/);
     if (!match || Number(match[1]) === activeChapter) return block;
 
     const nextText = `${activeChapter}${match[2]}${match[3]}`;
@@ -139,7 +166,7 @@ function normalizeSubheadingNumbers(blocks: ImportedBlock[]): ImportedBlock[] {
     return {
       ...block,
       text: nextText,
-      html: block.html.replace(new RegExp(`^(<${tag}[^>]*>\\s*)\\d{1,2}(\\.\\d{1,2}(?:\\.\\d{1,2})?)(?=\\s|<|$)`, "i"), `$1${activeChapter}$2`),
+      html: block.html.replace(new RegExp(`^(<${tag}[^>]*>\\s*)\\d{1,2}((?:\\.\\d{1,2})+)(?=\\s|<|$)`, "i"), `$1${activeChapter}$2`),
     };
   });
 }
@@ -152,14 +179,15 @@ function removePreTocSubheadings(blocks: ImportedBlock[]): ImportedBlock[] {
   if (chapterAfterToc < 0) return blocks;
 
   return blocks.filter((block, index) => {
-    if (index >= tocIndex || (block.kind !== "h2" && block.kind !== "h3")) return true;
-    return !/^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?(?:\s|$)/.test(block.text);
+    if (index >= tocIndex || !/^h[2-6]$/.test(block.kind)) return true;
+    return !/^\d{1,2}(?:\.\d{1,2})+(?:\s|$)/.test(block.text);
   });
 }
 
 /**
  * Konversi DOCX (skripsi) → blok terstruktur.
- * Heading 1/2 → section; heading 3 & isinya → tetap di dalam section induk.
+ * Heading 1 sampai 6 → section bertingkat; isi setiap heading tetap menempel pada
+ * section heading terdekatnya agar struktur editor dan export tetap sejajar.
  * Gambar: mammoth membakunya sebagai data-URI (ikut pindah ke editor).
  */
 export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
@@ -173,7 +201,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
 
   // split top-level tags (gambar dipertahankan di dalam paragraf)
   const blocks: ImportedBlock[] = [];
-  const re = /<(h1|h2|h3|p|div|table|blockquote|ul|ol|pre|dl|figure|li|img)(\s[^>]*)?>([\s\S]*?)<\/\1>|<img(\s[^>]*)?\/?>/gi;
+  const re = /<(h[1-6]|p|div|table|blockquote|ul|ol|pre|dl|figure|li|img)(\s[^>]*)?>([\s\S]*?)<\/\1>|<img(\s[^>]*)?\/?>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(rawHtml)) !== null) {
     if (m[0].startsWith("<img") && !m[1]) {
@@ -192,8 +220,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
       blocks.push({ kind: "body", text: "", html: m[0] });
       continue;
     }
-    let kind: ImportedBlock["kind"] =
-      tag === "h1" ? "h1" : tag === "h2" ? "h2" : tag === "h3" ? "h3" : "body";
+    let kind: ImportedBlock["kind"] = /^h[1-6]$/.test(tag) ? tag as ImportedBlock["kind"] : "body";
 
     // fallback pattern (hanya untuk paragraf biasa → upgrade jadi heading)
     if (kind === "body" && text) {
@@ -276,9 +303,10 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
     }
   }
 
-  // bangun sections: h1 = bab, h2 = sub-bab; h3 & body menempel di section aktif
+  // bangun sections: setiap heading menjadi section sendiri. Sebelumnya h3
+  // dimasukkan ke HTML section h2, sehingga 2.1.1 hilang dari tree editor.
   const sections: ImportedDoc["sections"] = [];
-  let current: { title: string; level: 1 | 2; html: string } | null = null;
+  let current: { title: string; level: number; html: string } | null = null;
   let title = "";
 
   for (const b of normalizedBlocks) {
@@ -288,21 +316,16 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
         title = b.text;
       }
       current = { title: b.text, level: 1, html: "" };
-    } else if (b.kind === "h2") {
+    } else if (isStructuralHeading(b)) {
       if (current) sections.push(current);
-      current = { title: b.text, level: 2, html: "" };
+      current = { title: b.text, level: blockHeadingLevel(b), html: "" };
     } else {
       if (!current) {
         // jangan push di sini — push terjadi saat heading berikutnya / di akhir,
         // supaya section tidak terduplikasi
         current = { title: "(Bagian awal)", level: 1, html: "" };
       }
-      // h3 tetap sebagai sub-judul dalam isi section
-      if (b.kind === "h3" && b.text) {
-        current.html += `<h3>${b.html.replace(/^<h3>|<\/h3>$/g, "")}</h3>`;
-      } else {
-        current.html += b.html;
-      }
+      current.html += b.html;
     }
   }
   if (current) sections.push(current);
@@ -378,11 +401,14 @@ export async function materializeDocxImages(
 /** Struktur (hanya heading) dari DOCX pedoman lama → custom structure. */
 export async function extractStructureDocx(
   buffer: Buffer
-): Promise<{ title: string; headings: { title: string; level: 1 | 2 }[] }> {
+): Promise<{ title: string; headings: { title: string; level: number }[] }> {
   const doc = await parseDocx(buffer);
   const headings = doc.blocks
-    .filter((b) => b.kind === "h1" || b.kind === "h2")
-    .map((b) => ({ title: b.text, level: b.kind === "h1" ? (1 as const) : (2 as const) }))
+    .filter((b) => b.kind === "h1" || isStructuralHeading(b))
+    .map((b) => ({
+      title: b.text,
+      level: blockHeadingLevel(b),
+    }))
     .filter((h) => h.title.length > 0 && h.title.length < 120);
   return { title: doc.title, headings };
 }

@@ -10,7 +10,7 @@ export const maxDuration = 120;
 
 /**
  * IMPOR MARKDOWN → proyek baru.
- * body: { title, campusStyle?, sections: [{ title, level: 1|2, html }] }
+ * body: { title, campusStyle?, sections: [{ title, level: 1|2|3, html }] }
  * HTML section memakai tag yang sama dengan impor docx (p/h3/strong/em/table/img/ul/ol)
  * sehingga Export DOCX + editor bekerja tanpa perubahan.
  */
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       sections: {
         create: sections.map((s, i) => ({
           title: s.title || `Bagian ${i + 1}`,
-          level: s.level === 2 ? 2 : 1,
+          level: Math.min(6, Math.max(1, Math.trunc(Number(s.level) || 1))),
           order: i,
           content: normalizeTableHtml(s.html || ""),
           status: "USER_EDITED",

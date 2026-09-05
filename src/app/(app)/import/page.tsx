@@ -212,7 +212,7 @@ export default function ImportPage() {
               <div className="border border-ink-200 rounded-lg max-h-64 overflow-y-auto p-3 bg-ink-50">
                 {guide.structure.headings.length === 0 && <div className="text-sm text-ink-400">Tidak ada heading terdeteksi.</div>}
                 {guide.structure.headings.map((h, i) => (
-                  <div key={i} className={`text-sm py-0.5 ${h.level === 1 ? "font-semibold" : "pl-5 text-ink-600"}`}>
+                  <div key={i} className={`text-sm py-0.5 ${h.level >= 4 ? "pl-14 text-ink-500" : h.level === 3 ? "pl-10 text-ink-500" : h.level === 2 ? "pl-5 text-ink-600" : "font-semibold"}`}>
                     {h.title}
                   </div>
                 ))}

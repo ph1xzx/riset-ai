@@ -200,8 +200,8 @@ export function htmlToMarkdown(html: string, mapImg: (src: string, alt: string) 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 
-/* ---------------- markdown -> sections (level 1/2 + html) ---------------- */
-export type MdSection = { title: string; level: 1 | 2; html: string };
+/* ---------------- markdown -> sections (level 1..6 + html) ---------------- */
+export type MdSection = { title: string; level: number; html: string };
 
 function splitMarkdownCells(line: string): string[] {
   const body = line.trim().replace(/^\||\|$/g, "");
@@ -234,7 +234,7 @@ export function markdownToSections(md: string): MdSection[] {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const sections: MdSection[] = [];
   let cur: MdSection | null = null;
-  const ensure = (title: string, level: 1 | 2) => {
+  const ensure = (title: string, level: number) => {
     cur = { title, level, html: "" };
     sections.push(cur);
   };
@@ -246,13 +246,11 @@ export function markdownToSections(md: string): MdSection[] {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
     if (h) {
       const level = h[1].length;
       const text = h[2].trim();
-      if (level === 1) ensure(text, 1);
-      else if (level === 2) ensure(text, 2);
-      else push(`<h3>${esc(text)}</h3>`);
+      ensure(text, Math.min(level, 6));
       i++;
       continue;
     }

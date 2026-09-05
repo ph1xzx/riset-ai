@@ -115,7 +115,7 @@ export function markdownToSectionsAst(md: string): MdSection[] {
   const tree = unified().use(remarkParse).use(remarkGfm).parse(md.replace(/\r\n/g, "\n")) as Root;
   const sections: MdSection[] = [];
   let cur: MdSection | null = null;
-  const ensure = (title: string, level: 1 | 2) => {
+  const ensure = (title: string, level: number) => {
     cur = { title, level, html: "" };
     sections.push(cur);
   };
@@ -128,9 +128,7 @@ export function markdownToSectionsAst(md: string): MdSection[] {
     if (n.type === "heading") {
       const h = n as any;
       const text = inline(h.children).replace(/<[^>]+>/g, "").trim();
-      if (h.depth === 1) ensure(text, 1);
-      else if (h.depth === 2) ensure(text, 2);
-      else push(`<h3>${inline(h.children)}</h3>`);
+      ensure(text, Math.min(h.depth, 6));
       continue;
     }
     push(blocks([n]));

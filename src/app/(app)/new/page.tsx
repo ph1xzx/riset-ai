@@ -400,7 +400,7 @@ export default function NewProjectPage() {
                   STRUKTUR ({guide.structure.headings.length} heading)
                 </div>
                 {guide.structure.headings.map((h: any, i: number) => (
-                  <div key={i} className={`text-sm py-0.5 ${h.level === 1 ? "font-semibold" : "pl-4 text-ink-600"}`}>
+                  <div key={i} className={`text-sm py-0.5 ${h.level >= 4 ? "pl-12 text-ink-500" : h.level === 3 ? "pl-8 text-ink-500" : h.level === 2 ? "pl-4 text-ink-600" : "font-semibold"}`}>
                     {h.title}
                   </div>
                 ))}

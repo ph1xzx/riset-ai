@@ -64,7 +64,7 @@ export default function StructureTree({ project, activeId, onSelect, onAdd, onDe
                   />
                 ) : (
                   <span
-                    className={`flex-1 min-w-0 truncate text-[13px] ${s.level === 2 ? "pl-4 text-ink-600" : "font-semibold"} ${
+                    className={`flex-1 min-w-0 truncate text-[13px] ${s.level >= 4 ? "pl-12 text-ink-500" : s.level === 3 ? "pl-8 text-ink-500" : s.level === 2 ? "pl-4 text-ink-600" : "font-semibold"} ${
                       active ? "text-ink-900" : ""
                     }`}
                     onDoubleClick={(e) => {
@@ -104,6 +104,9 @@ export default function StructureTree({ project, activeId, onSelect, onAdd, onDe
         </button>
         <button className="btn-ghost w-full justify-center !py-1.5 text-xs" onClick={() => onAdd(2)}>
           <Plus size={13} /> Sub-bab
+        </button>
+        <button className="btn-ghost w-full justify-center !py-1.5 text-xs" onClick={() => onAdd(3)}>
+          <Plus size={13} /> Sub-sub-bab
         </button>
       </div>
     </aside>

@@ -2,7 +2,7 @@
 
 export type StructureNode = {
   title: string;
-  level: 1 | 2;
+  level: 1 | 2 | 3;
   prompt?: string;
 };
 

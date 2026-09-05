@@ -90,13 +90,16 @@ export default function WordPreviewPage() {
   /* susun daftar blok seluruh dokumen */
   const blocks = useMemo<Blk[]>(() => {
     if (!project) return [];
-    const out: Blk[] = [{ kind: "cover", html: "", gapBefore: 0, gapAfter: 0 }];
+    const hasImportedCover = project.sections?.[0]?.title === "(Bagian awal)";
+    const out: Blk[] = hasImportedCover ? [] : [{ kind: "cover", html: "", gapBefore: 0, gapAfter: 0 }];
     for (const s of project.sections || []) {
       if (s.level === 1) {
         if (s.title !== "(Bagian awal)")
           out.push({ kind: "h1", html: s.title, gapBefore: 0, gapAfter: 96, breakBefore: true });
-      } else {
+      } else if (s.level === 2) {
         out.push({ kind: "h2", html: s.title, gapBefore: 16, gapAfter: 8 });
+      } else {
+        out.push({ kind: "h3", html: s.title, gapBefore: 12, gapAfter: 6 });
       }
       out.push(...contentToBlocks(s.content || ""));
     }
@@ -115,6 +118,9 @@ export default function WordPreviewPage() {
     blocks.forEach((b, i) => {
       const h = heights[i] + b.gapBefore + b.gapAfter;
       if (b.breakBefore && cur.length) { packed.push(cur); cur = []; curH = 0; }
+      const keepsNext = (b.kind === "h1" || b.kind === "h2" || b.kind === "h3") && i + 1 < blocks.length;
+      const next = keepsNext ? heights[i + 1] + blocks[i + 1].gapBefore + blocks[i + 1].gapAfter : 0;
+      if (keepsNext && cur.length && curH + h + next > CONTENT_H) { packed.push(cur); cur = []; curH = 0; }
       if (curH + h > CONTENT_H && cur.length) { packed.push(cur); cur = []; curH = 0; }
       cur.push(b);
       curH += h;
@@ -124,6 +130,8 @@ export default function WordPreviewPage() {
     setPages(packed);
     setFirstBabPage(babIdx);
   }, [blocks, CONTENT_H]);
+
+  const hasSyntheticCover = blocks[0]?.kind === "cover";
 
   function renderBlock(b: Blk, i: number) {
     const s: any = { marginTop: b.gapBefore, marginBottom: b.gapAfter };
@@ -155,6 +163,8 @@ export default function WordPreviewPage() {
     }
     if (b.kind === "h2")
       return <div key={i} className="wp-h2" style={{ ...s, fontSize: FONT_PX }} dangerouslySetInnerHTML={{ __html: b.html }} />;
+    if (b.kind === "h3")
+      return <div key={i} className="wp-h3" style={{ ...s, fontSize: FONT_PX }} dangerouslySetInnerHTML={{ __html: b.html }} />;
     return <div key={i} style={s} dangerouslySetInnerHTML={{ __html: b.html }} />;
   }
 
@@ -176,6 +186,7 @@ export default function WordPreviewPage() {
         .wp-body li { text-align: justify; }
         .wp-h1 { text-align: center; font-weight: bold; line-height: ${LINE_PX}px; text-transform: uppercase; }
         .wp-h2 { font-weight: bold; line-height: ${LINE_PX}px; text-align: left; text-indent: 0; }
+        .wp-h3 { font-weight: bold; line-height: ${LINE_PX}px; text-align: left; text-indent: 0; }
         @media print {
           .wp-toolbar { display: none !important; }
           .wp-scroll { background: #fff !important; overflow: visible !important; position: static !important; }
@@ -214,11 +225,11 @@ export default function WordPreviewPage() {
         ) : (
           <div style={{ width: PAGE_W * zoom }}>
             {pages.map((pg, pi) => {
-              const isCover = pi === 0;
+              const isCover = hasSyntheticCover && pi === 0;
               const isFront = firstBabPage > 0 && pi < firstBabPage;
               const arabic = pi - (firstBabPage > 0 ? firstBabPage - 1 : 0);
               const hasBab = pg.some((b) => b.kind === "h1");
-              const label = isFront ? toRoman(pi) : String(arabic);
+              const label = isFront ? toRoman(pi + (hasSyntheticCover ? 0 : 1)) : String(arabic);
               const bottom = isCover ? false : isFront || hasBab; // awal bab & front: tengah bawah
               return (
                 <div key={pi} className="wp-zoomwrap" style={{ width: PAGE_W * zoom, height: PAGE_H * zoom, marginBottom: 18 }}>
@@ -277,6 +288,8 @@ export default function WordPreviewPage() {
               </div>
             ) : b.kind === "h2" ? (
               <div className="wp-h2" style={{ fontSize: FONT_PX }} dangerouslySetInnerHTML={{ __html: b.html }} />
+            ) : b.kind === "h3" ? (
+              <div className="wp-h3" style={{ fontSize: FONT_PX }} dangerouslySetInnerHTML={{ __html: b.html }} />
             ) : (
               <div dangerouslySetInnerHTML={{ __html: b.html }} />
             )}

@@ -237,7 +237,7 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
                   key={`${opt.isChapter ? "chapter" : "section"}:${opt.id}`}
                   value={`${opt.isChapter ? "chapter" : "section"}:${opt.id}`}
                 >
-                  {opt.isChapter ? `📁 ${opt.title}` : `　📄 ${opt.title}`}
+                  {opt.isChapter ? `📁 ${opt.title}` : `${opt.level >= 4 ? "　　　　　↳" : opt.level === 3 ? "　　　↳" : "　📄"} ${opt.title}`}
                 </option>
               ))}
             </optgroup>

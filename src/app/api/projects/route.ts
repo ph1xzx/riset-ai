@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       sections: {
         create: (b.structure?.length ? b.structure : defaultStructure(b.type || "Skripsi")).map((s, i) => ({
           title: s.title,
-          level: s.level === 2 ? 2 : 1,
+          level: Math.min(6, Math.max(1, Math.trunc(Number(s.level) || 1))),
           order: i,
         })),
       },
