@@ -15,7 +15,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   return NextResponse.json(sources);
 }
 
-// body: { academicId?, provider?, ...metadata }  → simpan ke library proyek
+// body: { academicId?, provider?, metadata? } atau metadata di level teratas
+// → simpan ke library proyek
 export async function POST(req: NextRequest, { params }: Ctx) {
   const b = await req.json();
   const project = await prisma.project.findUnique({ where: { id: params.id } });
@@ -26,26 +27,35 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const paper = await resolvePaperById(b.academicId, params.id);
     if (!paper) return NextResponse.json({ error: "Paper tidak ditemukan" }, { status: 404 });
     data = paper;
-  } else if (b.title) {
-    data = {
-      id: b.doi ? `doi:${b.doi}` : `manual:${Date.now()}`,
-      title: b.title,
-      authors: b.authors ?? [],
-      year: b.year ?? null,
-      journal: b.journal ?? "",
-      doi: b.doi ?? null,
-      abstract: b.abstract ?? "",
-      url: b.url ?? "",
-      pdfUrl: b.pdfUrl ?? "",
-      citationCount: b.citationCount ?? 0,
-      openAccess: b.openAccess ?? false,
-      provider: b.provider ?? "manual",
-      type: "article",
-      keywords: b.keywords ?? [],
-      impactFactor: b.impactFactor ?? null,
-    };
   } else {
-    return NextResponse.json({ error: "academicId atau metadata wajib" }, { status: 400 });
+    // Citation Scan mengirim metadata sebagai object bersarang, sedangkan
+    // Find Papers lama mengirim field metadata langsung di body.
+    const metadata = b.metadata && typeof b.metadata === "object" ? b.metadata : b;
+    const title = typeof metadata.title === "string" ? metadata.title.trim() : "";
+    if (!title) {
+      return NextResponse.json({ error: "academicId atau metadata.title wajib" }, { status: 400 });
+    }
+
+    const doi = typeof metadata.doi === "string"
+      ? metadata.doi.replace(/^https?:\/\/doi\.org\//i, "").trim() || null
+      : null;
+    data = {
+      id: doi ? `doi:${doi}` : `manual:${Date.now()}`,
+      title,
+      authors: Array.isArray(metadata.authors) ? metadata.authors : [],
+      year: typeof metadata.year === "number" ? metadata.year : null,
+      journal: metadata.journal ?? "",
+      doi,
+      abstract: metadata.abstract ?? "",
+      url: metadata.url ?? "",
+      pdfUrl: metadata.pdfUrl ?? "",
+      citationCount: typeof metadata.citationCount === "number" ? metadata.citationCount : 0,
+      openAccess: Boolean(metadata.openAccess),
+      provider: metadata.provider ?? b.provider ?? "manual",
+      type: metadata.type ?? "article",
+      keywords: Array.isArray(metadata.keywords) ? metadata.keywords : [],
+      impactFactor: typeof metadata.impactFactor === "number" ? metadata.impactFactor : null,
+    };
   }
 
   // dedup: DOI atau judul+tahun

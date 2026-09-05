@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import TaskOverlay, { useTask } from "@/components/TaskOverlay";
 import Link from "next/link";
 import {
@@ -34,9 +34,37 @@ type FigureSuggestion = {
   why: string;
 };
 
-/** Kirim aksi ke Editor (window event) — editor nge-scroll & memblok teks. */
+/** Kirim aksi ke Editor (window event), editor nge-scroll & memblok teks. */
 function dispatchAction(action: string) {
   window.dispatchEvent(new CustomEvent("ws:action", { detail: { action } }));
+}
+
+async function readApiJson<T = any>(res: Response): Promise<T> {
+  const raw = await res.text();
+  let body: any = {};
+  try {
+    body = raw ? JSON.parse(raw) : {};
+  } catch {
+    body = {};
+  }
+  if (!res.ok) throw new Error(body?.error || `Permintaan gagal (${res.status})`);
+  return body as T;
+}
+
+function PanelError({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="border border-rose-200 bg-rose-50 rounded-lg p-2.5 text-[11px] text-rose-800" role="alert">
+      <div className="flex items-start gap-2">
+        <XCircle size={14} className="shrink-0 mt-0.5" />
+        <span className="flex-1">{message}</span>
+      </div>
+      {onRetry && (
+        <button type="button" className="btn-outline !py-1 !px-2 !text-[11px] mt-2" onClick={onRetry}>
+          <RefreshCw size={11} /> Coba lagi
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch, onClose, onOpenCitationScan }: Props) {
@@ -86,8 +114,8 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
           },
         }),
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
+      const j = await readApiJson<{ reply: string; threadId: string }>(res);
+      if (!j.reply || !j.threadId) throw new Error("Respons chat tidak lengkap.");
       setThreadId(j.threadId);
       setMessages((m) => [...m, { role: "assistant", content: j.reply }]);
     } catch (e: any) {
@@ -99,13 +127,39 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
 
   /* ---------- sources ---------- */
   const [sources, setSources] = useState<any[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourcesError, setSourcesError] = useState("");
+  const [deletingSourceId, setDeletingSourceId] = useState("");
+
+  const loadSources = useCallback(async () => {
+    setSourcesLoading(true);
+    setSourcesError("");
+    try {
+      const data = await readApiJson<any[]>(await fetch(`/api/projects/${project.id}/sources`));
+      setSources(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      setSourcesError(e.message || "Daftar sumber belum bisa dimuat.");
+    } finally {
+      setSourcesLoading(false);
+    }
+  }, [project.id]);
+
   useEffect(() => {
-    fetch(`/api/projects/${project.id}/sources`).then((r) => r.json()).then(setSources).catch(() => {});
-  }, [project.id, project.sources?.length]);
+    void loadSources();
+  }, [loadSources, project.sources?.length]);
 
   async function delSource(id: string) {
-    await fetch(`/api/sources/${id}`, { method: "DELETE" });
-    setSources((s) => s.filter((x) => x.id !== id));
+    if (!confirm("Hapus sumber ini dari Library proyek? Sitasi yang menggunakannya akan kehilangan tautan sumber.")) return;
+    setDeletingSourceId(id);
+    try {
+      await readApiJson(await fetch(`/api/sources/${id}`, { method: "DELETE" }));
+      setSources((s) => s.filter((x) => x.id !== id));
+      notify("Sumber dihapus dari Library.");
+    } catch (e: any) {
+      notify(e.message || "Sumber belum bisa dihapus.");
+    } finally {
+      setDeletingSourceId("");
+    }
   }
 
   /* ---------- review ---------- */
@@ -114,23 +168,27 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   const [citeBusy, setCiteBusy] = useState(false);
   const [review, setReview] = useState<any>(null);
   const [citeResult, setCiteResult] = useState<any>(null);
+  const [reviewError, setReviewError] = useState("");
+  const [citeError, setCiteError] = useState("");
 
   /* ---------- saran gambar ---------- */
   const [figBusy, setFigBusy] = useState(false);
   const [figs, setFigs] = useState<FigureSuggestion[] | null>(null);
   const [figGenBusy, setFigGenBusy] = useState<number | null>(null);
+  const [figError, setFigError] = useState("");
+  const [defError, setDefError] = useState("");
 
   async function runFigures() {
     setFigBusy(true);
     setFigs(null);
+    setFigError("");
     try {
       const res = await fetch(`/api/projects/${project.id}/figure-suggestions`, { method: "POST" });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
+      const j = await readApiJson<{ figures?: FigureSuggestion[] }>(res);
       setFigs(j.figures || []);
       notify(j.figures?.length ? `Ada ${j.figures.length} usulan gambar.` : "Tidak ada usulan gambar.");
     } catch (e: any) {
-      notify(e.message);
+      setFigError(e.message || "Saran gambar belum bisa dibuat.");
     } finally {
       setFigBusy(false);
     }
@@ -154,16 +212,16 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
         body: JSON.stringify({ prompt: fig.prompt || fig.caption }),
         signal: task.signal(),
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
-      task.log("Gambar jadi — menyisipkan ke section…");
+      const j = await readApiJson<{ url?: string }>(res);
+      if (!j.url) throw new Error("Server tidak mengembalikan URL gambar.");
+      task.log("Gambar jadi, menyisipkan ke section…");
       const sectionId = findSectionId(fig.sectionTitle);
       if (sectionId) {
         onInsertImage(sectionId, j.url, fig.caption);
         notify(`Gambar disisipkan di "${fig.sectionTitle}".`);
       } else {
         onInsertImage(activeSectionId, j.url, fig.caption);
-        notify("Section tujuan tak ketemu — gambar disisipkan di section aktif.");
+        notify("Section tujuan tak ketemu, gambar disisipkan di section aktif.");
       }
     } catch (e: any) {
       if (e.name !== "AbortError") notify(e.message);
@@ -176,17 +234,18 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   async function runReview() {
     setReviewBusy(true);
     setReview(null);
+    setReviewError("");
     task.start("Cek penulisan", undefined, "Memindai seluruh section dokumen…", true);
     try {
       task.log("Model sedang mereview tata bahasa & struktur…");
       const res = await fetch(`/api/projects/${project.id}/review`, { method: "POST", signal: task.signal() });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
-      task.log(`Selesai — ${j.issues.length} temuan.`);
-      setReview(j);
-      notify(`Cek penulisan selesai: ${j.issues.length} temuan.`);
+      const j = await readApiJson<any>(res);
+      const issues = Array.isArray(j.issues) ? j.issues : [];
+      task.log(`Selesai, ${issues.length} temuan.`);
+      setReview({ ...j, issues });
+      notify(`Cek penulisan selesai: ${issues.length} temuan.`);
     } catch (e: any) {
-      if (e.name !== "AbortError") notify(e.message);
+      if (e.name !== "AbortError") setReviewError(e.message || "Cek penulisan gagal.");
     } finally {
       task.stop();
       setReviewBusy(false);
@@ -196,16 +255,25 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   async function runCiteCheck() {
     setCiteBusy(true);
     setCiteResult(null);
+    setCiteError("");
     task.start("Cek sitasi", undefined, "Mengumpulkan sitasi dari seluruh dokumen…", true);
     try {
       task.log("Mencocokkan setiap sitasi dengan daftar pustaka…");
       const res = await fetch(`/api/projects/${project.id}/citation-check`, { method: "POST", signal: task.signal() });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
-      task.log(`Selesai — ${j.verified} terverifikasi, ${j.notFound} tidak ditemukan.`);
-      setCiteResult(j);
+      const j = await readApiJson<any>(res);
+      const results = Array.isArray(j.results) ? j.results : [];
+      const consistency = j.consistency
+        ? {
+            ...j.consistency,
+            ieeeOutOfRange: Array.isArray(j.consistency.ieeeOutOfRange) ? j.consistency.ieeeOutOfRange : [],
+            missingInRefList: Array.isArray(j.consistency.missingInRefList) ? j.consistency.missingInRefList : [],
+            uncitedInBody: Array.isArray(j.consistency.uncitedInBody) ? j.consistency.uncitedInBody : [],
+          }
+        : null;
+      task.log(`Selesai, ${j.verified} terverifikasi, ${j.notFound} tidak ditemukan.`);
+      setCiteResult({ ...j, results, consistency });
     } catch (e: any) {
-      if (e.name !== "AbortError") notify(e.message);
+      if (e.name !== "AbortError") setCiteError(e.message || "Cek sitasi gagal.");
     } finally {
       task.stop();
       setCiteBusy(false);
@@ -215,6 +283,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   async function runDefense() {
     setDefBusy(true);
     setDefQs(null);
+    setDefError("");
     task.start("Simulasi sidang", undefined, "Membaca dokumen untuk meracik pertanyaan penguji…", true);
     try {
       task.log(`Menyusun ${defCount} pertanyaan + jawaban (bisa 30–90 detik)…`);
@@ -224,12 +293,12 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
         body: JSON.stringify({ count: defCount }),
         signal: task.signal(),
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
+      const j = await readApiJson<{ questions?: any[] }>(res);
+      if (!Array.isArray(j.questions)) throw new Error("Server tidak mengembalikan daftar pertanyaan.");
       task.log("Pertanyaan siap.");
       setDefQs(j.questions);
     } catch (e: any) {
-      if (e.name !== "AbortError") notify(e.message);
+      if (e.name !== "AbortError") setDefError(e.message || "Simulasi sidang gagal.");
     } finally {
       task.stop();
       setDefBusy(false);
@@ -237,6 +306,14 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   }
 
   async function attachPdf(file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      notify("Pilih file PDF.");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      notify("Ukuran PDF maksimal 25 MB.");
+      return;
+    }
     setPdfBusy(true);
     try {
       const url = await uploadDocx(file); // nama helper umum: .docx/.pdf sama-sama file
@@ -245,10 +322,9 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileUrl: url }),
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error);
+      const j = await readApiJson<{ source?: any; pages: number; chunks: number }>(res);
       notify(`PDF terlampir: ${j.pages} halaman, ${j.chunks} chunk. Bisa dipakai AI Chat (pill PDF) & disitasi.`);
-      fetch(`/api/projects/${project.id}/sources`).then((r) => r.json()).then(setSources).catch(() => {});
+      if (j.source) setSources((current) => [j.source, ...current.filter((source) => source.id !== j.source?.id)]);
     } catch (e: any) {
       notify(e.message);
     } finally {
@@ -296,7 +372,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
         )}
       </div>
 
-      {/* ===== CARD AKSI — klik → editor nge-scroll & BLOCK teks yang akan diganti ===== */}
+      {/* ===== CARD AKSI, klik untuk scroll editor dan blok teks yang akan diganti ===== */}
       <div className="grid grid-cols-2 gap-2 p-3 pb-2 border-b border-ink-100">
         {(
           [
@@ -360,7 +436,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.length === 0 && (
               <div className="text-xs text-ink-400 text-center mt-8 px-4">
-                Tanya apa saja tentang risetmu — dengan konteks: section aktif, dokumen, atau library.
+                Tanya apa saja tentang risetmu, dengan konteks: section aktif, dokumen, atau library.
                 Contoh: <em>"ringkas rumusan masalah saya"</em>, <em>"metode apa yang cocok untuk data ini?"</em>
               </div>
             )}
@@ -398,7 +474,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-ink-400">{sources.length} sumber (citation-safe set)</span>
-            <Link href="/find-papers" className="text-xs text-brand-600 font-semibold flex items-center gap-1 hover:underline">
+            <Link href="/find-papers" className="text-xs text-brand-600 font-semibold flex items-center gap-1 hover:underline min-h-11">
               <FileSearch size={12} /> Find Papers
             </Link>
           </div>
@@ -415,29 +491,40 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
               }}
             />
             <button className="btn-outline !py-1 !px-2 !text-[11px] w-full justify-center" onClick={() => pdfRef.current?.click()} disabled={pdfBusy}>
-              {pdfBusy ? <Loader2 size={12} className="animate-spin" /> : <FileCog size={12} />} Lampirkan PDF (jurnal/pedoman) — untuk RAG & sitasi
+              {pdfBusy ? <Loader2 size={12} className="animate-spin" /> : <FileCog size={12} />} Lampirkan PDF (jurnal/pedoman), untuk RAG & sitasi
             </button>
           </div>
-          {sources.length === 0 && (
+          {sourcesLoading && (
+            <div className="text-xs text-ink-400 flex items-center gap-2 py-3" aria-live="polite">
+              <Loader2 size={13} className="animate-spin" /> Memuat Library…
+            </div>
+          )}
+          {sourcesError && <PanelError message={sourcesError} onRetry={loadSources} />}
+          {!sourcesLoading && !sourcesError && sources.length === 0 && (
             <div className="text-xs text-ink-400 bg-ink-50 rounded-lg p-3">
-              Belum ada sumber. Simpan paper dari Find Papers — AI hanya boleh mengutip sumber yang ada di sini,
+              Belum ada sumber. Simpan paper dari Find Papers. AI hanya boleh mengutip sumber yang ada di sini,
               sehingga sitasi tak pernah fiktif.
             </div>
           )}
-          {sources.map((s: any) => (
+          {!sourcesLoading && !sourcesError && sources.map((s: any) => (
             <div key={s.id} className="border border-ink-100 rounded-lg p-2.5 group">
               <div className="text-[13px] font-medium leading-snug line-clamp-2">{s.title}</div>
               <div className="text-[11px] text-ink-500 mt-1">
                 {parseJsonArray<string>(s.authors).slice(0, 2).join(", ")} • {s.year ?? "s.t."} • IF {s.impactFactor ?? "-"} • {s.citationCount} sitasi
               </div>
-              <div className="flex gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-2 mt-1.5 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 {s.doi && (
-                  <a className="text-[11px] text-brand-600 flex items-center gap-1 hover:underline" href={`https://doi.org/${s.doi}`} target="_blank" rel="noreferrer">
+                  <a className="text-[11px] text-brand-600 flex items-center gap-1 hover:underline min-h-11" href={/^https?:\/\//i.test(s.doi) ? s.doi : `https://doi.org/${s.doi}`} target="_blank" rel="noreferrer">
                     <Ext size={11} /> DOI
                   </a>
                 )}
-                <button className="text-[11px] text-rose-600 flex items-center gap-1 hover:underline" onClick={() => delSource(s.id)}>
-                  <Trash2 size={11} /> Hapus
+                {s.pdfUrl && (
+                  <a className="text-[11px] text-brand-600 flex items-center gap-1 hover:underline min-h-11" href={s.pdfUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink size={11} /> PDF
+                  </a>
+                )}
+                <button className="text-[11px] text-rose-600 flex items-center gap-1 hover:underline min-h-11" onClick={() => delSource(s.id)} disabled={deletingSourceId === s.id}>
+                  {deletingSourceId === s.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />} Hapus
                 </button>
               </div>
             </div>
@@ -449,7 +536,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
       {tab === "review" && (
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
           <div className="text-xs text-ink-500">
-            Cek penulisan (grammar, tone, koherensi, konsistensi data) + verifikasi sitasi terhadap Crossref —
+            Cek penulisan (grammar, tone, koherensi, konsistensi data) + verifikasi sitasi terhadap Crossref.
             hasil klik → bukti/link.
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -460,6 +547,8 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
               {citeBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Cek Sitasi
             </button>
           </div>
+          {reviewError && <PanelError message={reviewError} onRetry={runReview} />}
+          {citeError && <PanelError message={citeError} onRetry={runCiteCheck} />}
           {onOpenCitationScan && (
             <button
               className="btn-outline w-full justify-center !text-xs mt-2 border-brand-200 bg-brand-50/40 text-brand-700 hover:bg-brand-50 flex items-center gap-1.5"
@@ -473,11 +562,12 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
             {figBusy ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
             {figBusy ? "Menganalisa dokumen…" : "Saran Gambar"}
           </button>
+          {figError && <PanelError message={figError} onRetry={runFigures} />}
 
           {/* Daftar usulan gambar */}
           {figs && figs.length > 0 && (
             <div className="space-y-2 mt-1">
-              <div className="text-[11px] font-semibold text-ink-500">USULAN GAMBAR — klik "Buat" untuk generate & sisipkan langsung ke section terkait</div>
+              <div className="text-[11px] font-semibold text-ink-500">USULAN GAMBAR, klik "Buat" untuk generate & sisipkan langsung ke section terkait</div>
               {figs.map((f) => (
                 <div key={f.index} className="border border-ink-100 rounded-lg p-2.5">
                   <div className="flex items-start justify-between gap-2">
@@ -543,6 +633,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
               {defBusy ? <Loader2 size={13} className="animate-spin" /> : <GraduationCap size={13} />}
               {defBusy ? "Penguji menyusun soal…" : "Buat Pertanyaan Penguji"}
             </button>
+            {defError && <PanelError message={defError} onRetry={runDefense} />}
             {defQs && (
               <div className="mt-2 space-y-1.5 max-h-72 overflow-y-auto">
                 {defQs.map((q: any, i: number) => (
@@ -636,7 +727,7 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
                   </div>
                   {citeResult.consistency.missingInRefList.map((x: any, i: number) => (
                     <div key={i} className="text-[12px] py-0.5">
-                      <code>{x.raw}</code> <span className="text-ink-400">— {x.author}, {x.year}</span>
+                      <code>{x.raw}</code> <span className="text-ink-400">({x.author}, {x.year})</span>
                     </div>
                   ))}
                 </div>
