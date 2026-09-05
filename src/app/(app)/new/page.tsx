@@ -5,6 +5,7 @@ import TaskOverlay, { useTask } from "@/components/TaskOverlay";
 import { ArrowLeft, ArrowRight, Sparkles, CheckCircle2, Loader2, FileCog } from "lucide-react";
 import { PROJECT_TYPES, METHODS, MCDM_METHODS, CITATION_STYLES } from "@/lib/research";
 import { uploadDocx } from "@/lib/upload";
+import { getResearchRecommendations } from "@/lib/recommendations";
 
 type BrainTitle = {
   title: string;
@@ -62,6 +63,7 @@ export default function NewProjectPage() {
   const [chosen, setChosen] = useState("");
 
   const finalMethod = method === "Custom" ? customMethod || "Custom" : method;
+  const recommendations = getResearchRecommendations({ topic, field, object, caseStudy, problem });
 
   async function createProject() {
     if (!topic.trim()) {
@@ -249,6 +251,31 @@ export default function NewProjectPage() {
           <h1 className="text-xl font-bold">Metode & Preferensi Sitasi</h1>
           <div>
             <div className="label">Metode penelitian</div>
+            <div className="mb-4 border border-brand-200 bg-brand-50/60 p-3 sm:p-4" aria-label="Rekomendasi awal">
+              <div className="flex items-start gap-2">
+                <Sparkles size={16} className="text-brand-600 mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-sm font-semibold text-ink-900">Rekomendasi awal dari brief-mu</div>
+                  <p className="text-xs text-ink-600 mt-0.5">Pilih sebagai titik mulai, lalu cocokkan lagi dengan dosen pembimbing dan data yang benar-benar tersedia.</p>
+                </div>
+              </div>
+              <div className="mt-3 space-y-2">
+                {recommendations.map((r) => (
+                  <div key={r.method} className="bg-white border border-brand-100 p-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold">{r.title}</div>
+                        <div className="text-xs text-ink-600 mt-1">{r.reason}</div>
+                        <div className="text-xs text-ink-500 mt-1">Langkah berikutnya: {r.nextStep}</div>
+                      </div>
+                      <button type="button" className="btn-outline !py-1.5 !px-2.5 text-xs shrink-0" onClick={() => setMethod(r.method)}>
+                        Pilih {r.method}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               {METHODS.map((m) => (
                 <button

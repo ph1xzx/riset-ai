@@ -22,14 +22,35 @@ export default function TemplatesPage() {
   const [form, setForm] = useState({ name: "", prodi: "", university: "", sourceText: "" });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [presetFilter, setPresetFilter] = useState("Semua");
   const [parseInfo, setParseInfo] = useState<{ detected: string[]; warnings: string[]; config: any } | null>(null);
 
   /* editor per-aturan: null = tertutup */
   const [ed, setEd] = useState<{ id?: string; name: string; prodi: string; university: string; sourceText: string; config: any } | null>(null);
 
   const load = useCallback(() => {
-    fetch("/api/templates").then((r) => r.json()).then((j) => setTpls(j.templates || []));
-    fetch("/api/templates/presets").then((r) => r.json()).then((j) => setPresets(j.presets || []));
+    setLoading(true);
+    setError("");
+    Promise.all([
+      fetch("/api/templates").then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(j?.error || "Template tersimpan belum bisa dimuat.");
+        return j;
+      }),
+      fetch("/api/templates/presets").then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(j?.error || "Saran template belum bisa dimuat.");
+        return j;
+      }),
+    ])
+      .then(([saved, suggested]) => {
+        setTpls(saved.templates || []);
+        setPresets(suggested.presets || []);
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
   useEffect(load, [load]);
 
@@ -42,7 +63,12 @@ export default function TemplatesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceText: form.sourceText }),
       });
-      setParseInfo(await res.json());
+      const j = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(j?.error || "Pedoman belum bisa dianalisis.");
+      setParseInfo(j);
+      setMsg("Analisis selesai. Periksa peringatan sebelum menyimpan template.");
+    } catch (e: any) {
+      setMsg(e.message);
     } finally {
       setBusy(false);
     }
@@ -60,7 +86,7 @@ export default function TemplatesPage() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
-      setMsg(`Template "${form.name}" tersimpan — ${j.detected?.length || 0} aturan terbaca dari pedoman.`);
+      setMsg(`Template "${form.name}" tersimpan. ${j.detected?.length || 0} aturan terbaca dari pedoman.`);
       setForm({ name: "", prodi: "", university: "", sourceText: "" });
       setParseInfo(null);
       load();
@@ -82,7 +108,7 @@ export default function TemplatesPage() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
-      setMsg(`Template "${p.name}" ditambahkan dari saran — siap diterapkan ke proyek.`);
+      setMsg(`Template "${p.name}" ditambahkan dari saran. Siap diterapkan ke proyek.`);
       load();
     } catch (e: any) {
       setMsg(e.message);
@@ -125,8 +151,14 @@ export default function TemplatesPage() {
 
   async function remove(id: string, name: string) {
     if (!confirm(`Hapus template "${name}"?`)) return;
-    await fetch(`/api/templates/${id}`, { method: "DELETE" });
-    load();
+    try {
+      const res = await fetch(`/api/templates/${id}`, { method: "DELETE" });
+      const j = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(j?.error || "Template belum bisa dihapus.");
+      load();
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
 
   const set = (path: string, v: any) => {
@@ -162,8 +194,11 @@ export default function TemplatesPage() {
     );
   };
 
+  const categories = ["Semua", ...Array.from(new Set(presets.map((p) => p.category).filter(Boolean)))];
+  const visiblePresets = presetFilter === "Semua" ? presets : presets.filter((p) => p.category === presetFilter);
+
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-2">
         <ScrollText size={20} />
         <h1 className="text-xl font-bold">Template Pedoman Penulisan</h1>
@@ -174,16 +209,31 @@ export default function TemplatesPage() {
       </p>
 
       {msg && <div className="chip bg-blue-50 text-blue-700">{msg}</div>}
+      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">{error}</div>}
 
       {/* ===== SARAN TEMPLATE ===== */}
       <div className="space-y-3">
         <div className="font-semibold flex items-center gap-2">
-          <Sparkles size={16} /> Saran template — pakai langsung atau sesuaikan
+          <Sparkles size={16} /> Saran template, pilih titik awal lalu sesuaikan
         </div>
+        <p className="text-sm text-ink-500">Preset ini adalah contoh format umum. Cocokkan kembali dengan pedoman resmi kampus atau jurnalmu.</p>
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((category) => (
+            <button key={category} type="button" className={`chip !px-3 !py-1.5 ${presetFilter === category ? "bg-ink-950 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200"}`} onClick={() => setPresetFilter(category)} aria-pressed={presetFilter === category}>
+              {category}
+            </button>
+          ))}
+        </div>
+        {loading ? (
+          <div className="card p-8 text-center text-sm text-ink-400">Memuat saran template…</div>
+        ) : (
         <div className="grid md:grid-cols-2 gap-3">
-          {presets.map((p) => (
+          {visiblePresets.map((p) => (
             <div key={p.id} className="card p-4 space-y-2">
-              <div className="font-semibold text-sm">{p.name}</div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-semibold text-sm">{p.name}</div>
+                {p.category && <span className="chip bg-brand-50 text-brand-700 shrink-0">{p.category}</span>}
+              </div>
               <div className="text-xs text-gray-500 leading-relaxed">{p.description}</div>
               <div className="flex gap-2">
                 <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => usePreset(p)} disabled={busy}>
@@ -196,6 +246,7 @@ export default function TemplatesPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* ===== DARI TEKS PEDOMAN ===== */}
@@ -203,10 +254,10 @@ export default function TemplatesPage() {
         <div className="font-semibold flex items-center gap-2">
           <Plus size={16} /> Template dari teks pedoman
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <div className="label">Nama template</div>
-            <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Pedoman Skripsi TI — UNPAM" />
+            <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Pedoman Skripsi TI, UNPAM" />
           </div>
           <div>
             <div className="label">Program studi</div>
@@ -218,7 +269,7 @@ export default function TemplatesPage() {
           </div>
         </div>
         <div>
-          <div className="label">Teks pedoman (tempel utuh — boleh markdown/plain)</div>
+          <div className="label">Teks pedoman (tempel utuh, boleh markdown/plain)</div>
           <textarea
             className="input h-40 font-mono text-xs"
             value={form.sourceText}
@@ -277,7 +328,7 @@ export default function TemplatesPage() {
               <div>
                 <div className="font-semibold">{t.name}</div>
                 <div className="text-xs text-gray-500">
-                  {[t.prodi, t.university].filter(Boolean).join(" — ") || "Tanpa prodi/universitas"}
+                  {[t.prodi, t.university].filter(Boolean).join(", ") || "Tanpa prodi/universitas"}
                   {t.hasSource && " • teks pedoman tersimpan"}
                 </div>
               </div>
@@ -307,7 +358,7 @@ export default function TemplatesPage() {
         ))}
         {!tpls.length && (
           <div className="text-sm text-gray-400 border border-dashed rounded-lg p-6 text-center">
-            Belum ada template tersimpan — pakai salah satu saran di atas.
+            Belum ada template tersimpan. Pakai salah satu saran di atas.
           </div>
         )}
       </div>
