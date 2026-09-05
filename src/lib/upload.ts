@@ -53,3 +53,13 @@ export async function uploadFile(file: File): Promise<string> {
   if (!res.ok) throw new Error(j.error || `Upload gagal (${res.status})`);
   return j.url as string;
 }
+
+export async function deleteUploadedFile(url: string): Promise<void> {
+  const res = await fetch("/api/uploads", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `File belum bisa dihapus (${res.status})`);
+}

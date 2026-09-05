@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       prompt
     );
     const ext = img.mime.includes("jpeg") ? "jpg" : img.mime.split("/")[1]?.replace("+xml", "") || "png";
-    const url = await saveFileBytes(`img-${Date.now()}.${ext}`, img.buffer);
+    const url = await saveFileBytes(`img-${Date.now()}.${ext}`, img.buffer, project.userId);
     return NextResponse.json({ url, mime: img.mime, model: img.model, bytes: img.buffer.length });
   } catch (e: any) {
     // limit kuota/rate → kasih tahu UI supaya fallback ke "salin prompt / upload manual"

@@ -1,10 +1,24 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TaskOverlay, { useTask } from "@/components/TaskOverlay";
-import { Upload, FileCog, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
-import { uploadDocx } from "@/lib/upload";
+import { Upload, FileCog, CheckCircle2, Loader2, ArrowRight, Trash2, RefreshCw, FileText } from "lucide-react";
+import { deleteUploadedFile, uploadDocx } from "@/lib/upload";
 import MarkdownImport from "@/components/MarkdownImport";
+
+type StoredFile = {
+  name: string;
+  url: string;
+  size: number | null;
+  createdAt: string | null;
+};
+
+function formatBytes(size: number | null): string {
+  if (size == null) return "ukuran tidak tersedia";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function ImportPage() {
   const router = useRouter();
@@ -23,6 +37,38 @@ export default function ImportPage() {
   } | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newTopic, setNewTopic] = useState("");
+  const [storedFiles, setStoredFiles] = useState<StoredFile[]>([]);
+  const [filesBusy, setFilesBusy] = useState(false);
+  const [deletingFile, setDeletingFile] = useState("");
+
+  async function loadStoredFiles() {
+    setFilesBusy(true);
+    try {
+      const res = await fetch("/api/uploads");
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) setStoredFiles(Array.isArray(j.files) ? j.files : []);
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadStoredFiles();
+  }, []);
+
+  async function removeStoredFile(file: StoredFile) {
+    if (!confirm(`Hapus file "${file.name}" dari storage? Jika masih dipakai dokumen, gambar atau PDF itu tidak akan tampil.`)) return;
+    setDeletingFile(file.url);
+    try {
+      await deleteUploadedFile(file.url);
+      setStoredFiles((files) => files.filter((item) => item.url !== file.url));
+      setMsg(`File "${file.name}" dihapus dari storage.`);
+    } catch (e: any) {
+      setErr(e.message || "File belum bisa dihapus.");
+    } finally {
+      setDeletingFile("");
+    }
+  }
 
   async function handleImportSkripsi(file: File) {
     setBusy(true);
@@ -202,6 +248,52 @@ export default function ImportPage() {
 
       {/* ---- IMPOR MARKDOWN PACKAGE ---- */}
       <MarkdownImport notify={setMsg} />
+
+      <div className="card p-6">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileText size={18} className="text-brand-600" /> File yang diupload
+            </h2>
+            <p className="text-sm text-ink-500 mt-1">Kelola DOCX, PDF, dan gambar yang tersimpan di storage akun ini.</p>
+          </div>
+          <button type="button" className="btn-ghost !px-2" onClick={() => void loadStoredFiles()} disabled={filesBusy} title="Muat ulang daftar file">
+            <RefreshCw size={14} className={filesBusy ? "animate-spin" : ""} />
+          </button>
+        </div>
+        {filesBusy && !storedFiles.length ? (
+          <div className="text-sm text-ink-400 flex items-center gap-2 py-4" aria-live="polite">
+            <Loader2 size={14} className="animate-spin" /> Memuat daftar file…
+          </div>
+        ) : storedFiles.length ? (
+          <div className="divide-y divide-ink-100 border border-ink-100 rounded-lg mt-4">
+            {storedFiles.map((file) => (
+              <div key={file.url} className="flex items-center gap-3 p-3">
+                <FileText size={16} className="text-ink-400 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate" title={file.name}>{file.name}</div>
+                  <div className="text-[11px] text-ink-400">{formatBytes(file.size)}{file.createdAt ? ` • ${new Date(file.createdAt).toLocaleDateString("id-ID")}` : ""}</div>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-11 min-w-11 inline-flex items-center justify-center gap-1 text-xs text-rose-600 hover:bg-rose-50 rounded-md"
+                  onClick={() => void removeStoredFile(file)}
+                  disabled={deletingFile === file.url}
+                  title={`Hapus ${file.name}`}
+                  aria-label={`Hapus ${file.name}`}
+                >
+                  {deletingFile === file.url ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  <span className="hidden sm:inline">Hapus</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-ink-400 border border-dashed border-ink-200 rounded-lg p-4 mt-4 text-center">
+            Belum ada file yang tersimpan.
+          </div>
+        )}
+      </div>
 
       {msg && !busy && (
         <div className="flex items-center gap-2 text-emerald-700 text-sm">

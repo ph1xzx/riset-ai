@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   try {
     const img = await fetchRemoteImage(sourceUrl);
     const ext = img.mime.includes("jpeg") ? "jpg" : img.mime.split("/")[1]?.replace("+xml", "") || "png";
-    const url = await saveFileBytes(`web-${Date.now()}.${ext}`, img.buffer);
+    const url = await saveFileBytes(`web-${Date.now()}.${ext}`, img.buffer, project.userId);
     return NextResponse.json({ url, mime: img.mime, bytes: img.buffer.length, source: sourceUrl });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 });
