@@ -331,8 +331,10 @@ export function reviewMessages(opts: {
 export function citationScanMessages(opts: {
   project: Project;
   sections: { id: string; title: string; text: string }[];
+  yearFrom?: number;
+  yearTo?: number;
 }): { system: string; user: string } {
-  const { project, sections } = opts;
+  const { project, sections, yearFrom, yearTo } = opts;
   return {
     system:
       "Kamu adalah asisten reviewer akademik dan pakar sitasi ilmiah bereputasi.\n" +
@@ -341,11 +343,14 @@ export function citationScanMessages(opts: {
       "1. Pilih maksimal 6-8 peluang sitasi paling esensial dan berdampak tinggi.\n" +
       "2. 'claim' harus merupakan kutipan kalimat atau frasa nyata dari teks yang belum memiliki tanda sitasi.\n" +
       "3. 'reason' jelaskan dalam 1 kalimat mengapa bagian ini butuh rujukan akademik (cth: klaim metodologis, landasan teori, klaim empiris/data).\n" +
-      "4. 'academicQuery' harus berupa kata kunci pencarian ilmiah (bisa Bahasa Inggris atau Indonesia) yang sangat akurat untuk menemukan jurnal riil di OpenAlex/Crossref (misal: 'PROMETHEE II multi-criteria decision loan evaluation' atau 'Convolutional Neural Network image classification accuracy').\n\n" +
+      "4. 'academicQuery' harus berupa kata kunci pencarian ilmiah (bisa Bahasa Inggris atau Indonesia) yang sangat akurat untuk menemukan jurnal riil di OpenAlex/Crossref. Gabungkan konsep klaim dengan judul/topik proyek, jangan memberi query generik seperti 'research methodology'.\n" +
+      (yearFrom && yearTo ? `5. Rekomendasi harus memprioritaskan artikel ilmiah tahun ${yearFrom}-${yearTo}. Jangan mengusulkan sumber di luar rentang itu.\n\n` : "\n") +
       "Output WAJIB HANYA JSON valid tanpa markdown formatting atau pembuka/penutup:\n" +
       '[\n  {\n    "sectionId": string,\n    "sectionTitle": string,\n    "claim": string,\n    "reason": string,\n    "academicQuery": string\n  }\n]',
     user: [
       `PROYEK: "${project.title}" (${project.type}). Bidang: ${project.field || "-"} | Metode: ${project.method || "-"}`,
+      `KONTEKS UTAMA JUDUL: Topik "${project.topic || project.title}" | Objek "${project.object || "-"}" | Studi kasus "${project.caseStudy || "-"}" | Masalah "${project.problem || "-"}"`,
+      yearFrom && yearTo ? `BATAS TAHUN SUMBER: ${yearFrom}-${yearTo} (tahun publikasi, bukan tahun sitasi di naskah).` : "",
       `NASKAH YANG DIPINDAI:\n${sections
         .map((s) => `### [ID: ${s.id}] ${s.title}\n${s.text.slice(0, 2000)}`)
         .join("\n\n")}`,

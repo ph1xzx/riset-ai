@@ -41,6 +41,7 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
   const [stepMsg, setStepMsg] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [scanRange, setScanRange] = useState<{ from: number; to: number } | null>(null);
   const [opportunities, setOpportunities] = useState<CitationOpportunity[] | null>(null);
   const [insertedIds, setInsertedIds] = useState<Record<string, boolean>>({});
   const [savingLibrary, setSavingLibrary] = useState<Record<string, boolean>>({});
@@ -102,6 +103,7 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
     setBusy(true);
     setScanError(null);
     setScanNotice(null);
+    setScanRange(null);
     setStepMsg("Memindai naskah untuk mencari kalimat tanpa rujukan…");
     setOpportunities(null);
 
@@ -125,6 +127,9 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
       }
 
       if (j.notice) setScanNotice(j.notice);
+      if (Number.isInteger(j.yearFrom) && Number.isInteger(j.yearTo)) {
+        setScanRange({ from: j.yearFrom, to: j.yearTo });
+      }
       setOpportunities(j.opportunities || []);
 
       if (!j.opportunities || j.opportunities.length === 0) {
@@ -326,10 +331,13 @@ export default function CitationScanModal({ project, isOpen, onClose, onInsertCi
           {!busy && opportunities && opportunities.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-1 border-b border-ink-100">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
-                  Ditemukan {opportunities.length} Kalimat yang Membutuhkan Rujukan
-                </span>
-                <span className="text-[11px] text-ink-400">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                    Ditemukan {opportunities.length} Kalimat yang Membutuhkan Rujukan
+                  </span>
+                  {scanRange && <span className="text-[11px] text-ink-400">Sumber {scanRange.from}-{scanRange.to}</span>}
+                </div>
+                <span className="text-[11px] text-ink-400 shrink-0">
                   Format sitasi: {project.citationStyle || "APA"}
                 </span>
               </div>

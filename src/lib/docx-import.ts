@@ -101,6 +101,62 @@ function detectHeading(text: string): "h1" | "h2" | "h3" | null {
   return null;
 }
 
+function chapterNumber(text: string): number | null {
+  const match = text.match(/^(?:BAB|Bagian)\s+([IVXLCDM]+|\d+)/i);
+  if (!match) return null;
+  if (/^\d+$/.test(match[1])) return Number(match[1]);
+
+  const roman = match[1].toUpperCase();
+  const values: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let total = 0;
+  for (let i = 0; i < roman.length; i++) {
+    const current = values[roman[i]] || 0;
+    const next = values[roman[i + 1]] || 0;
+    total += current < next ? -current : current;
+  }
+  return total || null;
+}
+
+/**
+ * Sebagian template Word membawa nomor sub-bab dari daftar isi sebelumnya.
+ * Kalau "2.1" muncul di bawah BAB I, nomor pertama harus mengikuti BAB aktif,
+ * sehingga isi tetap berada di bab yang benar saat dipakai sebagai struktur.
+ */
+function normalizeSubheadingNumbers(blocks: ImportedBlock[]): ImportedBlock[] {
+  let activeChapter: number | null = null;
+  return blocks.map((block) => {
+    if (block.kind === "h1") {
+      activeChapter = chapterNumber(block.text);
+      return block;
+    }
+    if (!activeChapter || (block.kind !== "h2" && block.kind !== "h3")) return block;
+
+    const match = block.text.match(/^(\d{1,2})(\.\d{1,2}(?:\.\d{1,2})?)(?=\s|$)([\s\S]*)$/);
+    if (!match || Number(match[1]) === activeChapter) return block;
+
+    const nextText = `${activeChapter}${match[2]}${match[3]}`;
+    const tag = block.kind;
+    return {
+      ...block,
+      text: nextText,
+      html: block.html.replace(new RegExp(`^(<${tag}[^>]*>\\s*)\\d{1,2}(\\.\\d{1,2}(?:\\.\\d{1,2})?)(?=\\s|<|$)`, "i"), `$1${activeChapter}$2`),
+    };
+  });
+}
+
+/** Buang sub-bab numerik nyasar sebelum daftar isi, yang berasal dari field TOC Word. */
+function removePreTocSubheadings(blocks: ImportedBlock[]): ImportedBlock[] {
+  const tocIndex = blocks.findIndex((block) => /^daftar isi\b/i.test(block.text));
+  if (tocIndex < 0) return blocks;
+  const chapterAfterToc = blocks.findIndex((block, index) => index > tocIndex && block.kind === "h1" && RE_BAB.test(block.text));
+  if (chapterAfterToc < 0) return blocks;
+
+  return blocks.filter((block, index) => {
+    if (index >= tocIndex || (block.kind !== "h2" && block.kind !== "h3")) return true;
+    return !/^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?(?:\s|$)/.test(block.text);
+  });
+}
+
 /**
  * Konversi DOCX (skripsi) → blok terstruktur.
  * Heading 1/2 → section; heading 3 & isinya → tetap di dalam section induk.
@@ -197,11 +253,14 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
     }
   }
 
+  const withoutPreTocSubheadings = removePreTocSubheadings(blocks);
+  const normalizedBlocks = normalizeSubheadingNumbers(withoutPreTocSubheadings);
+
   // gabungkan "BAB I" + judul bab yang tertulis di baris/paragraf berikutnya
   // (template Word sering memisah nomor bab dan judulnya jadi dua paragraf)
-  for (let i = 0; i < blocks.length - 1; i++) {
-    const b = blocks[i];
-    const n = blocks[i + 1];
+  for (let i = 0; i < normalizedBlocks.length - 1; i++) {
+    const b = normalizedBlocks[i];
+    const n = normalizedBlocks[i + 1];
     if (
       b.kind === "h1" &&
       /^bab\s+[ivx0-9]+[.]?$/i.test(b.text) &&
@@ -213,7 +272,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
     ) {
       b.text = `${b.text} ${n.text}`.replace(/\s+/g, " ").trim();
       b.html = `<h1>${b.text}</h1>`;
-      blocks.splice(i + 1, 1);
+      normalizedBlocks.splice(i + 1, 1);
     }
   }
 
@@ -222,7 +281,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
   let current: { title: string; level: 1 | 2; html: string } | null = null;
   let title = "";
 
-  for (const b of blocks) {
+  for (const b of normalizedBlocks) {
     if (b.kind === "h1") {
       if (current) sections.push(current);
       if (!title && !/^(abstrak|abstract|kata pengantar|daftar isi|pernyataan|lembar)/i.test(b.text)) {
@@ -255,7 +314,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
   const cover = coverMatch ? stripTags(coverMatch[1]).replace(/\s+/g, " ").trim() : "";
   if (cover.length >= 20) title = cover.slice(0, 160);
 
-  return { title: title || "(dokumen tanpa judul)", blocks, sections, rawHtml };
+  return { title: title || "(dokumen tanpa judul)", blocks: normalizedBlocks, sections, rawHtml };
 }
 
 const DATA_IMAGE_RE = /data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)(?=["'])/gi;

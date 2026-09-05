@@ -36,6 +36,83 @@ function formatInText(authors: string[], year: number | null, style = "APA"): st
   return `(${first} et al., ${yr})`;
 }
 
+function referenceWindow(project: { yearFrom: number | null; yearTo: number | null }): { yearFrom: number; yearTo: number } {
+  const currentYear = new Date().getFullYear();
+  const minimumYear = currentYear - 5;
+  const yearFrom = Math.min(currentYear, Math.max(project.yearFrom ?? minimumYear, minimumYear));
+  const yearTo = Math.min(currentYear, Math.max(project.yearTo ?? currentYear, yearFrom));
+  return { yearFrom, yearTo };
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function queryTerms(value: string): string[] {
+  const stopwords = new Set([
+    "yang", "untuk", "dalam", "dengan", "pada", "dari", "dan", "atau", "sebagai", "adalah", "merupakan",
+    "penelitian", "study", "research", "analysis", "sistem", "system", "the", "of", "and", "with", "using",
+    "based", "method", "metode", "studi", "kasus", "case", "this", "that", "pada",
+  ]);
+  return [...new Set(normalizeSearchText(value).split(" ").filter((word) => word.length >= 4 && !stopwords.has(word)))].slice(0, 24);
+}
+
+function contextQuery(project: any, opportunity: { claim: string; academicQuery?: string; sectionTitle?: string }): string {
+  const takeWords = (value: unknown, limit: number) =>
+    typeof value === "string" ? value.replace(/\s+/g, " ").trim().split(" ").slice(0, limit).join(" ") : "";
+  return [
+    takeWords(project.title, 12),
+    takeWords(project.topic, 10),
+    takeWords([project.field, project.object, project.method].filter(Boolean).join(" "), 10),
+    takeWords(opportunity.sectionTitle, 5),
+    takeWords(opportunity.academicQuery || opportunity.claim, 14),
+    takeWords(opportunity.claim, 14),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function relevanceScore(paper: AcademicSource, terms: string[]): number {
+  if (!terms.length) return 0;
+  const title = normalizeSearchText(paper.title);
+  const body = normalizeSearchText([paper.abstract, paper.journal, ...(paper.keywords || [])].join(" "));
+  return terms.reduce((score, term) => score + (title.includes(term) ? 4 : 0) + (body.includes(term) ? 1 : 0), 0);
+}
+
+function rankContextPapers(papers: AcademicSource[], query: string): AcademicSource[] {
+  const terms = queryTerms(query);
+  if (!terms.length) return papers;
+  const scored = papers.map((paper) => ({ paper, score: relevanceScore(paper, terms) }));
+  const relevant = scored.filter((item) => item.score > 0);
+  return (relevant.length ? relevant : scored).sort((a, b) => b.score - a.score).map((item) => item.paper);
+}
+
+function sameText(a: string, b: string): boolean {
+  const left = normalizeSearchText(a);
+  const right = normalizeSearchText(b);
+  if (!left || !right) return false;
+  if (left.includes(right)) return true;
+  return right.split(" ").slice(0, 8).join(" ").length >= 24 && left.includes(right.split(" ").slice(0, 8).join(" "));
+}
+
+function resolveOpportunitySection(
+  opportunity: { sectionId?: string; sectionTitle?: string; claim: string },
+  sections: Array<{ id: string; title: string; text: string }>
+) {
+  const byClaim = sections.find((section) => sameText(section.text, opportunity.claim));
+  if (byClaim) return byClaim;
+  const byId = sections.find((section) => section.id === opportunity.sectionId);
+  if (byId) return byId;
+  const title = normalizeSearchText(opportunity.sectionTitle || "");
+  return sections.find((section) => title && (title === normalizeSearchText(section.title) || title.includes(normalizeSearchText(section.title)))) || null;
+}
+
 /** Robust JSON parser for AI outputs (handles root array, object wrapper, or code fences) */
 function parseOpportunitiesJson(rawText: string): any[] {
   if (!rawText) return [];
@@ -190,12 +267,15 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   let usedAi = false;
   let notice: string | null = null;
+  const { yearFrom, yearTo } = referenceWindow(project);
 
   // 1. Coba pindai dengan AI (jika API Key aktif)
   try {
     const { system, user } = citationScanMessages({
       project,
       sections: prepared,
+      yearFrom,
+      yearTo,
     });
 
     const aiRes = await aiChat(
@@ -207,9 +287,25 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       { projectId: project.id, json: true }
     );
 
-    const parsed = parseOpportunitiesJson(aiRes.content);
+    const parsed = parseOpportunitiesJson(aiRes.content)
+      .map((item) => ({
+        sectionId: typeof item?.sectionId === "string" ? item.sectionId : "",
+        sectionTitle: typeof item?.sectionTitle === "string" ? item.sectionTitle : "",
+        claim: typeof item?.claim === "string" ? item.claim.trim() : "",
+        reason: typeof item?.reason === "string" ? item.reason : "Klaim ini membutuhkan rujukan akademik.",
+        academicQuery: typeof item?.academicQuery === "string" ? item.academicQuery.trim() : "",
+      }))
+      .filter((item) => item.claim.length >= 25)
+      .map((item) => ({ ...item, section: resolveOpportunitySection(item, prepared) }))
+      .filter((item) => item.section && sameText(item.section.text, item.claim));
     if (parsed.length > 0) {
-      rawOpportunities = parsed;
+      rawOpportunities = parsed.map((item) => ({
+        sectionId: item.section!.id,
+        sectionTitle: item.section!.title,
+        claim: item.claim,
+        reason: item.reason,
+        academicQuery: item.academicQuery,
+      }));
       usedAi = true;
     }
   } catch (e: any) {
@@ -232,23 +328,28 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const opportunities = await Promise.all(
     rawOpportunities.slice(0, 8).map(async (opp, idx) => {
       let papers: AcademicSource[] = [];
-      const query = opp.academicQuery || opp.claim.slice(0, 80);
+      const query = contextQuery(project, opp);
 
       try {
         const { results } = await searchPapers({
           query,
           limit: 3,
+          yearFrom,
+          yearTo,
+          includePreprint: false,
         });
-        papers = results || [];
+        papers = rankContextPapers(results || [], query);
       } catch {
         try {
-          const fallbackQuery = opp.claim.split(/\s+/).slice(0, 5).join(" ");
-          const { results } = await searchPapers({ query: fallbackQuery, limit: 3 });
-          papers = results || [];
+          const fallbackQuery = [project.title, project.topic, opp.claim].filter(Boolean).join(" ").split(/\s+/).slice(0, 18).join(" ");
+          const { results } = await searchPapers({ query: fallbackQuery, limit: 3, yearFrom, yearTo, includePreprint: false });
+          papers = rankContextPapers(results || [], fallbackQuery);
         } catch {
           papers = [];
         }
       }
+
+      papers = papers.filter((paper) => paper.year != null && paper.year >= yearFrom && paper.year <= yearTo);
 
       const suggestedPapers = papers.slice(0, 2).map((p) => {
         const authors = p.authors || [];
@@ -273,7 +374,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         sectionTitle: opp.sectionTitle || targetSections[0]?.title || "Dokumen",
         claim: opp.claim,
         reason: opp.reason,
-        academicQuery: opp.academicQuery,
+        academicQuery: query,
         suggestedPapers,
       };
     })
@@ -286,6 +387,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     totalFound: opportunities.length,
     usedAi,
     notice,
+    yearFrom,
+    yearTo,
     opportunities,
   });
 }
