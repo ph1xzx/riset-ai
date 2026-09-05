@@ -24,13 +24,24 @@ function romanToNum(s: string): number {
 }
 
 export function validateFormat(
-  sections: { title: string; level: number; content: string }[]
+  sections: { title: string; level: number; content: string; status?: string }[]
 ): FormatIssue[] {
   const issues: FormatIssue[] = [];
   let activeBab = 0;
 
   for (const s of sections) {
     const title = (s.title || "").trim();
+    const contentText = (s.content || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+
+    if (!title) {
+      issues.push({ code: "SECTION_NO_TITLE", severity: "error", msg: "Ada section tanpa judul." });
+    }
+    if (contentText.length < 30 && !/DAFTAR\s+PUSTAKA|REFERENCES?/i.test(title)) {
+      issues.push({ code: "SECTION_TOO_SHORT", severity: "warn", msg: `"${title || "Section tanpa judul"}" masih kosong atau terlalu pendek.` });
+    }
+    if (s.status === "AI_DRAFT") {
+      issues.push({ code: "AI_DRAFT_UNREVIEWED", severity: "warn", msg: `"${title || "Section"}" masih berstatus AI Draft, baca ulang sebelum export.` });
+    }
 
     if (s.level === 1) {
       if (/^BAB\b/i.test(title)) {

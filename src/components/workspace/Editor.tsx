@@ -17,7 +17,7 @@ import { Node, mergeAttributes } from "@tiptap/core";
 import {
   Sparkles, Wand2, Bold, Italic, Underline as LU, Strikethrough, List, ListOrdered,
   Code, Quote as BQ, Link as LIcon, Table as TIcon, Image as IIcon, Undo2, Redo2, Heading1, Heading2,
-  X, Check, Trash2, Loader2, ArrowRight, BookOpen, RefreshCw, ImagePlus, Search, Upload, Copy,
+  X, Check, Trash2, Loader2, ArrowRight, BookOpen, RefreshCw, ImagePlus, Search, Upload, Copy, History,
 } from "lucide-react";
 import { stripHtml, parseJsonArray } from "@/lib/json";
 import { uploadFile } from "@/lib/upload";
@@ -137,6 +137,29 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
   const [diffHtml, setDiffHtml] = useState<string>("");
   const [paraBusy, setParaBusy] = useState(false);
   const [ctxBusy, setCtxBusy] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [aiHistory, setAiHistory] = useState<Array<{ action: string; before: string; after: string; createdAt: string }>>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`riset.ai-history.${section.id}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setAiHistory(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setAiHistory([]);
+    }
+  }, [section.id]);
+
+  function rememberAiChange(action: string, before: string, after: string) {
+    const entry = { action, before, after, createdAt: new Date().toISOString() };
+    setAiHistory((current) => {
+      const next = [entry, ...current].slice(0, 20);
+      try {
+        localStorage.setItem(`riset.ai-history.${section.id}`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
 
   const editor = useEditor({
     extensions: [
@@ -233,6 +256,8 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
       setImgNote("");
       setImgLimit(null);
       setImgOpen(true);
+    } else if (action === "italicize-term") {
+      italicizeTerm(String((detail as any)?.term || ""));
     } else if (action === "insert-citation") {
       const d = detail as { claim?: string; citationText?: string; sourceId?: string } | undefined;
       if (d?.sourceId && d?.citationText) {
@@ -292,6 +317,32 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
       }).catch(() => {});
       onSaved();
     });
+  }
+
+  function italicizeTerm(term: string) {
+    const ed = editor;
+    const value = term.trim();
+    if (!ed || !value) return;
+    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`(^|[^A-Za-z])(${escaped})(?=$|[^A-Za-z])`, "gi");
+    const ranges: Array<{ from: number; to: number }> = [];
+    ed.state.doc.descendants((node, pos, parent) => {
+      if (!node.isText || !node.text || parent?.type.name === "citation" || node.marks.some((mark) => mark.type.name === "italic")) return;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(node.text)) !== null) {
+        const from = pos + match.index + match[1].length;
+        ranges.push({ from, to: from + match[2].length });
+        if (!match[0].length) pattern.lastIndex++;
+      }
+    });
+    if (!ranges.length) {
+      notify(`Istilah "${value}" tidak ditemukan di section aktif.`);
+      return;
+    }
+    const chain = ed.chain().focus();
+    for (const range of ranges.reverse()) chain.setTextSelection(range).setItalic();
+    chain.run();
+    onSaved();
   }
 
   function insertImage(url: string, caption?: string) {
@@ -659,8 +710,9 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
     }
   }
 
-  function applyEdit() {
+  async function applyEdit() {
     if (!editor || !diff) return;
+    const appliedDiff = diff;
     if (diffMode === "section" && diffHtml) {
       editor.chain().focus().setContent(diffHtml).run();
     } else if (sel) {
@@ -671,6 +723,18 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
         .insertContent(diff.after)
         .run();
       setSel(null);
+    }
+    rememberAiChange(diffMode === "section" ? "Parafrase section" : "AI Edit", appliedDiff.before, appliedDiff.after);
+    try {
+      const res = await fetch(`/api/sections/${section.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editor.getHTML(), status: "USER_EDITED" }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || "Perubahan belum tersimpan.");
+    } catch (e: any) {
+      notify(e.message || "Perubahan belum tersimpan.");
     }
     setDiff(null);
     setDiffHtml("");
@@ -776,6 +840,8 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
   const EDIT_CMDS = [
     "Improve Academic Writing",
     "Paraphrase",
+    "More Critical",
+    "Concise Academic",
     "Shorten",
     "Expand",
     "Simplify",
@@ -817,6 +883,9 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
           </select>
           <button className="btn-outline !py-1.5 text-xs" onClick={() => setPromptOpen(!promptOpen)}>
             Prompt
+          </button>
+          <button className="btn-outline !py-1.5 text-xs" onClick={() => setHistoryOpen(true)} title="Lihat riwayat perubahan AI di browser ini">
+            <History size={13} /> <span className="hidden 2xl:inline">Riwayat AI</span>
           </button>
           <button className="btn-outline !py-1.5 text-xs" onClick={() => paraphrase()} disabled={paraBusy} title="Tulis ulang section dengan kata-kata baru; sitasi dijaga">
             {paraBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
@@ -950,6 +1019,38 @@ export default function Editor({ project, section, onSaved, notify }: Props) {
               <button className="btn-primary !py-1 !px-2 !text-xs" onClick={() => customCmd && runEdit(customCmd)} disabled={!customCmd.trim() || editBusy}>
                 <ArrowRight size={12} />
               </button>
+            </div>
+          </div>
+        )}
+
+        {historyOpen && (
+          <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-center justify-center p-6" onClick={() => setHistoryOpen(false)}>
+            <div className="card w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-history-title">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 id="ai-history-title" className="font-semibold flex items-center gap-2"><History size={16} className="text-brand-600" /> Riwayat perubahan AI</h3>
+                  <p className="text-[11px] text-ink-400 mt-1">Perubahan yang sudah diterapkan di section ini, tersimpan di browser ini.</p>
+                </div>
+                <button type="button" className="btn-ghost !px-2" onClick={() => setHistoryOpen(false)} aria-label="Tutup riwayat AI"><X size={16} /></button>
+              </div>
+              {aiHistory.length === 0 ? (
+                <div className="text-sm text-ink-400 border border-dashed border-ink-200 p-4 text-center">Belum ada perubahan AI yang diterapkan.</div>
+              ) : (
+                <div className="space-y-2">
+                  {aiHistory.map((item, index) => (
+                    <div key={`${item.createdAt}-${index}`} className="border border-ink-100 rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <span className="chip bg-brand-50 text-brand-700">{item.action}</span>
+                        <time className="text-[10px] text-ink-400" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("id-ID")}</time>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] leading-relaxed">
+                        <div className="bg-rose-50/60 rounded p-2"><div className="font-semibold text-rose-700 mb-1">Sebelum</div>{item.before.slice(0, 280)}{item.before.length > 280 ? "…" : ""}</div>
+                        <div className="bg-emerald-50/60 rounded p-2"><div className="font-semibold text-emerald-700 mb-1">Sesudah</div>{item.after.slice(0, 280)}{item.after.length > 280 ? "…" : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

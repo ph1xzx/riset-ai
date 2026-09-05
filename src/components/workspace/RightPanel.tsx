@@ -6,10 +6,11 @@ import {
   MessageSquareText, BookOpen, ShieldCheck, Send, Loader2, ExternalLink, Trash2,
   FileSearch, ExternalLink as Ext, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
   FileCog, GraduationCap, ChevronDown, ChevronUp, Wand2, ImagePlus, Search, Sparkles,
-  X, PanelRightClose,
+  X, Languages,
 } from "lucide-react";
-import { stripHtml, parseJsonArray } from "@/lib/json";
+import { parseJsonArray } from "@/lib/json";
 import { uploadDocx } from "@/lib/upload";
+import { scanEnglishTerms, type EnglishTermMatch } from "@/lib/english-scan";
 
 type Props = {
   project: any;
@@ -20,6 +21,7 @@ type Props = {
   onOpenImageSearch: (query: string, sectionId?: string) => void;
   onClose?: () => void;
   onOpenCitationScan?: () => void;
+  onItalicizeTerm: (term: string, sectionIds: string[]) => Promise<void>;
 };
 
 type Tab = "chat" | "sources" | "review";
@@ -67,7 +69,7 @@ function PanelError({ message, onRetry }: { message: string; onRetry?: () => voi
   );
 }
 
-export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch, onClose, onOpenCitationScan }: Props) {
+export default function RightPanel({ project, activeSectionId, onJump, notify, onInsertImage, onOpenImageSearch, onClose, onOpenCitationScan, onItalicizeTerm }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
   const [ctx, setCtx] = useState({ section: true, document: false, library: false, pdfs: false });
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -177,6 +179,72 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
   const [figGenBusy, setFigGenBusy] = useState<number | null>(null);
   const [figError, setFigError] = useState("");
   const [defError, setDefError] = useState("");
+  const [englishMatches, setEnglishMatches] = useState<EnglishTermMatch[] | null>(null);
+  const [englishBusy, setEnglishBusy] = useState(false);
+  const [englishReplacing, setEnglishReplacing] = useState("");
+  const [repairTarget, setRepairTarget] = useState("");
+  const [repairResults, setRepairResults] = useState<any[] | null>(null);
+  const [repairBusy, setRepairBusy] = useState(false);
+  const [repairError, setRepairError] = useState("");
+
+  function runEnglishScan() {
+    setEnglishBusy(true);
+    try {
+      const matches = scanEnglishTerms(project.sections || []);
+      setEnglishMatches(matches);
+      notify(matches.length ? `Ditemukan ${matches.length} istilah Inggris.` : "Tidak ada istilah Inggris dari daftar pemindaian.");
+    } finally {
+      setEnglishBusy(false);
+    }
+  }
+
+  async function replaceEnglish(match: EnglishTermMatch) {
+    setEnglishReplacing(match.term);
+    try {
+      await onItalicizeTerm(match.term, match.sectionIds);
+      setEnglishMatches((current) => current?.filter((item) => item.term !== match.term) || null);
+    } catch (e: any) {
+      notify(e.message || `Istilah "${match.term}" belum bisa dimiringkan.`);
+    } finally {
+      setEnglishReplacing("");
+    }
+  }
+
+  async function findCitationRepair(result: any) {
+    const raw = result?.candidate?.raw || "";
+    setRepairTarget(raw);
+    setRepairResults(null);
+    setRepairError("");
+    setRepairBusy(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/citation-repair`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidate: result.candidate }),
+      });
+      const data = await readApiJson<{ results?: any[] }>(res);
+      setRepairResults(Array.isArray(data.results) ? data.results : []);
+    } catch (e: any) {
+      setRepairError(e.message || "Pencarian sumber pengganti gagal.");
+    } finally {
+      setRepairBusy(false);
+    }
+  }
+
+  async function saveRepair(paper: any) {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/sources`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ metadata: paper }),
+      });
+      const source = await readApiJson<any>(res);
+      setSources((current) => [source, ...current.filter((item) => item.id !== source.id)]);
+      notify(source.duplicate ? "Sumber itu sudah ada di Library." : "Sumber pengganti disimpan ke Library.");
+    } catch (e: any) {
+      notify(e.message || "Sumber belum bisa disimpan.");
+    }
+  }
 
   async function runFigures() {
     setFigBusy(true);
@@ -558,6 +626,48 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
               <span>Scan Peluang Sitasi (Pilih Bab / Semua)</span>
             </button>
           )}
+          <div className="border border-ink-100 rounded-lg p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5 text-[12px] font-semibold">
+              <Languages size={14} className="text-brand-600" /> Scan istilah Inggris
+            </div>
+            <p className="text-[11px] text-ink-500">
+              Cari istilah teknis yang masih ditulis Inggris, lalu ubah semua kemunculannya menjadi miring.
+            </p>
+            <button className="btn-outline w-full justify-center !text-xs" onClick={runEnglishScan} disabled={englishBusy}>
+              {englishBusy ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />}
+              {englishBusy ? "Memindai…" : "Scan teks"}
+            </button>
+            {englishMatches && englishMatches.length === 0 && (
+              <div className="text-[11px] text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 size={12} /> Tidak ada kandidat dari daftar istilah saat ini.
+              </div>
+            )}
+            {englishMatches && englishMatches.length > 0 && (
+              <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                {englishMatches.map((match) => (
+                  <div key={match.term} className="border border-ink-100 rounded-lg p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <code className="text-[12px] font-semibold text-brand-700 break-words">{match.term}</code>
+                        <div className="text-[10px] text-ink-400 mt-0.5">
+                          {match.count} kemunculan, {match.sectionTitles.join(", ")}
+                        </div>
+                      </div>
+                      <button
+                        className="btn-primary !py-1 !px-2 !text-[11px] shrink-0"
+                        onClick={() => replaceEnglish(match)}
+                        disabled={englishReplacing !== ""}
+                      >
+                        {englishReplacing === match.term ? <Loader2 size={11} className="animate-spin" /> : <Languages size={11} />}
+                        Miringkan
+                      </button>
+                    </div>
+                    {match.examples[0] && <div className="text-[10px] text-ink-500 mt-1 line-clamp-2">{match.examples[0]}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button className="btn-primary w-full justify-center !text-xs mt-2" onClick={runFigures} disabled={figBusy}>
             {figBusy ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
             {figBusy ? "Menganalisa dokumen…" : "Saran Gambar"}
@@ -704,6 +814,34 @@ export default function RightPanel({ project, activeSectionId, onJump, notify, o
                       <a className="text-[11px] text-brand-600 inline-flex items-center gap-1 mt-1 hover:underline" href={r.url} target="_blank" rel="noreferrer">
                         <ExternalLink size={11} /> Buka bukti (DOI)
                       </a>
+                    )}
+                    {r.status === "NOT_FOUND" && (
+                      <div className="mt-2 space-y-1.5">
+                        <button
+                          type="button"
+                          className="btn-outline !py-1 !px-2 !text-[11px]"
+                          onClick={() => findCitationRepair(r)}
+                          disabled={repairBusy}
+                        >
+                          {repairBusy && repairTarget === r.candidate.raw ? <Loader2 size={11} className="animate-spin" /> : <Search size={11} />}
+                          Cari sumber pengganti
+                        </button>
+                        {repairTarget === r.candidate.raw && repairError && <PanelError message={repairError} />}
+                        {repairTarget === r.candidate.raw && repairResults && (
+                          <div className="space-y-1.5 pl-2 border-l-2 border-brand-200">
+                            {!repairResults.length && <div className="text-[11px] text-ink-400">Belum ada kandidat yang cukup mirip.</div>}
+                            {repairResults.map((paper: any) => (
+                              <div key={paper.id} className="bg-ink-50 rounded p-2">
+                                <div className="text-[11px] font-semibold line-clamp-2">{paper.title}</div>
+                                <div className="text-[10px] text-ink-500 mt-0.5">{(paper.authors || []).slice(0, 2).join(", ")} • {paper.year || "s.t."} • {paper.journal || ""}</div>
+                                <button type="button" className="btn-primary !py-1 !px-2 !text-[10px] mt-1.5" onClick={() => saveRepair(paper)}>
+                                  <BookOpen size={10} /> Simpan ke Library
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 );

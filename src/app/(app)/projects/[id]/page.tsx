@@ -240,6 +240,21 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     [activeId]
   );
 
+  async function italicizeEnglish(term: string, sectionIds: string[]) {
+    const res = await fetch(`/api/projects/${params.id}/english-italicize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ term, sectionIds }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.error || "Istilah belum bisa dimiringkan.");
+    if (sectionIds.includes(activeId)) {
+      window.dispatchEvent(new CustomEvent("ws:action", { detail: { action: "italicize-term", term } }));
+    }
+    notify(`${j.occurrences || 0} kemunculan "${term}" dimiringkan.`);
+    load();
+  }
+
   // Setelah pindah section + Editor mount ulang → kirim pending insert/search
   useEffect(() => {
     if (!activeSection) return;
@@ -343,6 +358,11 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   }
 
   async function exportDocx() {
+    const preflightIssues = runFormatCheck();
+    if (preflightIssues.some((issue) => issue.severity === "error")) {
+      notify("Export ditahan karena ada masalah format wajib. Periksa hasil cek format.");
+      return;
+    }
     setBusyExport(true);
     task.start("Export DOCX", project.title, "Mengumpulkan section & aset dokumen…");
     try {
@@ -406,6 +426,11 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
   }
 
   async function exportPdf() {
+    const preflightIssues = runFormatCheck();
+    if (preflightIssues.some((issue) => issue.severity === "error")) {
+      notify("Export ditahan karena ada masalah format wajib. Periksa hasil cek format.");
+      return;
+    }
     setBusyPdf(true);
     task.start("Export PDF", project.title, "Menyusun DOCX terlebih dahulu…");
     try {
@@ -461,13 +486,13 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     }
   }
 
-  function runFormatCheck() {
-    if (!project) return;
-    setIssues(
-      validateFormat(
-        (project.sections || []).map((s: any) => ({ title: s.title, level: s.level, content: s.content || "" }))
-      )
+  function runFormatCheck(): FormatIssue[] {
+    if (!project) return [];
+    const found = validateFormat(
+      (project.sections || []).map((s: any) => ({ title: s.title, level: s.level, content: s.content || "", status: s.status }))
     );
+    setIssues(found);
+    return found;
   }
 
   async function deleteProject() {
@@ -671,6 +696,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           notify={notify}
           onInsertImage={insertImageToSection}
           onOpenImageSearch={openImageSearch}
+          onItalicizeTerm={italicizeEnglish}
           onClose={() => toggleSidebar("right")}
           onOpenCitationScan={() => setCitationScanOpen(true)}
         />
@@ -816,7 +842,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           <div className="card p-5 w-full max-w-xl max-h-[80vh] overflow-y-auto space-y-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div className="font-semibold flex items-center gap-2">
-                <ShieldCheck size={16} /> Hasil cek format
+                <ShieldCheck size={16} /> Hasil cek format sebelum export
               </div>
               <button className="btn-ghost !px-2" onClick={() => setIssues(null)}>
                 <X size={16} />

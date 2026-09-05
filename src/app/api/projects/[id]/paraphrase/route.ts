@@ -55,11 +55,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       .map((p) => `<p>${p.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`)
       .join("");
 
-    await prisma.section.update({
-      where: { id: sectionId },
-      data: { content: html, status: "USER_EDITED" },
-    });
-
+    // Jangan menyimpan di sini. Pengguna harus menyetujui diff terlebih dahulu;
+    // editor yang menyimpan hasil setelah tombol Terapkan ditekan.
     return NextResponse.json({
       before: contentText,
       after: cleaned,
