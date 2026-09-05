@@ -4,6 +4,7 @@ import { aiChat, AIConfigError } from "@/lib/ai/provider";
 import { paraphraseMessages } from "@/lib/ai/prompts";
 import { extractCitationCandidates } from "@/lib/citation-check";
 import { stripHtml } from "@/lib/json";
+import { cleanAcademicOutput } from "@/lib/ai/clean-output";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -46,7 +47,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       ],
       { projectId: project.id }
     );
-    const html = res.content
+    const cleaned = cleanAcademicOutput(res.content);
+    if (!cleaned) return NextResponse.json({ error: "Model mengembalikan hasil kosong." }, { status: 502 });
+    const html = cleaned
       .trim()
       .split(/\n\s*\n+/)
       .map((p) => `<p>${p.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`)
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
     return NextResponse.json({
       before: contentText,
-      after: res.content.trim(),
+      after: cleaned,
       html,
       preservedCitations: existingCitations,
       model: res.model,

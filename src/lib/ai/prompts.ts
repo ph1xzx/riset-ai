@@ -166,7 +166,7 @@ export function editMessages(opts: {
     `Kamu editor penulisan akademik. Bahasa: ${lang(project)}.`,
     "Terapkan instruksi edit pada teks terpilih; pertahankan makna ilmiah dan istilah teknis.",
     CITATION_RULES,
-    "Kembalikan HANYA teks hasil (pengganti penuh teks terpilih), tanpa komentar, tanpa fence.",
+    "Kembalikan HANYA teks hasil (pengganti penuh teks terpilih), tanpa Markdown, tanpa bullet, tanpa karakter asterisk (*), tanpa komentar, tanpa fence.",
   ].join("\n");
   const user = [
     `Sub-bab: ${sectionTitle}`,
@@ -223,7 +223,7 @@ export function paraphraseMessages(opts: {
       `Kamu editor ahli penulisan akademik. Bahasa output: ${lang(project)}.`,
       "Parafrase teks secara penuh: ganti struktur kalimat, pilihan kata, dan urutan gagasan, TAPI pertahankan semua fakta, angka, nama metode, istilah teknis, dan makna ilmiah.",
       "Nada formal akademik, koheren, tanpa pengulangan.",
-      "Kembalikan HANYA hasil parafrase, tanpa heading, tanpa komentar, tanpa fence.",
+      "Kembalikan HANYA hasil parafrase dalam teks biasa, tanpa heading, tanpa Markdown, tanpa bullet, tanpa karakter asterisk (*), tanpa komentar, tanpa fence.",
     ].join("\n"),
     user: [
       `Sub-bab: ${section.title}`,

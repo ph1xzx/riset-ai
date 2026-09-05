@@ -4,6 +4,7 @@ import { aiChat, AIConfigError } from "@/lib/ai/provider";
 import { editMessages } from "@/lib/ai/prompts";
 import { retrieveSources } from "@/lib/retrieval";
 import { renderCitations, validateSourceTokens } from "@/lib/citations";
+import { cleanAcademicOutput } from "@/lib/ai/clean-output";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -38,9 +39,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       ],
       { projectId: project.id }
     );
-    const tokens = validateSourceTokens(res.content, allowed);
+    const cleaned = cleanAcademicOutput(res.content);
+    if (!cleaned) return NextResponse.json({ error: "Model mengembalikan hasil kosong." }, { status: 502 });
+    const tokens = validateSourceTokens(cleaned, allowed);
     const rejected = tokens.filter((t) => !t.valid).map((t) => t.marker);
-    const { text } = renderCitations(res.content, allowed, project.citationStyle);
+    const { text } = renderCitations(cleaned, allowed, project.citationStyle);
 
     return NextResponse.json({
       result: text,
