@@ -108,7 +108,7 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
 
   // split top-level tags (gambar dipertahankan di dalam paragraf)
   const blocks: ImportedBlock[] = [];
-  const re = /<(h1|h2|h3|p|div|table|blockquote|img)(\s[^>]*)?>([\s\S]*?)<\/\1>|<img(\s[^>]*)?\/?>/gi;
+  const re = /<(h1|h2|h3|p|div|table|blockquote|ul|ol|pre|dl|figure|li|img)(\s[^>]*)?>([\s\S]*?)<\/\1>|<img(\s[^>]*)?\/?>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(rawHtml)) !== null) {
     if (m[0].startsWith("<img") && !m[1]) {
@@ -141,32 +141,51 @@ export async function parseDocx(buffer: Buffer): Promise<ImportedDoc> {
       }
     }
 
-    const html =
-      tag === "table"
-        ? normalizeTableHtml(m[0])
-        : kind === "body"
-        ? `<p>${inner}</p>`
-        : `<${kind}>${inner}</${kind}>`;
+    const preserveContainer = ["table", "blockquote", "ul", "ol", "pre", "dl", "figure"].includes(tag);
+    const html = preserveContainer
+      ? normalizeTableHtml(m[0])
+      : kind === "body"
+      ? `<p>${inner}</p>`
+      : `<${kind}>${inner}</${kind}>`;
 
     blocks.push({ kind, text, html });
   }
 
-  // region TOC: setelah heading "DAFTAR ISI", buang baris bernomor halaman
-  // (termasuk romawi: "ABSTRAK iv") sampai ketemu blok non-TOC pertama
+  // region TOC: Word sering mengubah field daftar isi menjadi heading biasa,
+  // sehingga nomor halaman tidak selalu ikut keluar dari Mammoth. Kalau ada
+  // outline BAB yang berulang setelah DAFTAR ISI, blok pertama adalah TOC dan
+  // harus dibuang agar tidak menjadi section kosong yang menduplikasi naskah.
   const tocStart = blocks.findIndex(
     (b) => (b.kind === "h1" || b.kind === "h2") && /^daftar isi\b/i.test(b.text)
   );
   if (tocStart >= 0) {
-    let k = tocStart + 1;
-    while (k < blocks.length) {
-      const t = blocks[k].text;
-      const isHdr = /^(isi|halaman|hal\.?)$/i.test(t); // header kolom TOC
-      const endsPage =
-        Boolean(t) && t.length < 100 && (RE_PAGE_DIGIT.test(t) || RE_PAGE_ROMAN.test(t));
-      if (!isHdr && !endsPage) break;
-      k++;
+    const chapterEntries = blocks
+      .map((block, index) => ({ block, index }))
+      .filter(({ block, index }) => index > tocStart && block.kind === "h1" && RE_BAB.test(block.text))
+      .map(({ block, index }) => ({
+        index,
+        key: block.text.match(/^bab\s+([ivx0-9]+)/i)?.[1]?.toUpperCase() || "",
+      }))
+      .filter((entry) => entry.key);
+
+    const firstChapter = chapterEntries[0];
+    const repeatedChapter = firstChapter && chapterEntries.find((entry) => entry.key === firstChapter.key && entry.index > firstChapter.index);
+    if (repeatedChapter) {
+      // Kemunculan kedua chapter pertama adalah awal naskah. Bagian sebelum itu
+      // merupakan outline yang disalin ke daftar isi.
+      blocks.splice(tocStart + 1, repeatedChapter.index - tocStart - 1);
+    } else {
+      let k = tocStart + 1;
+      while (k < blocks.length) {
+        const t = blocks[k].text;
+        const isHdr = /^(isi|halaman|hal\.?)$/i.test(t);
+        const endsPage =
+          Boolean(t) && t.length < 100 && (RE_PAGE_DIGIT.test(t) || RE_PAGE_ROMAN.test(t));
+        if (!isHdr && !endsPage) break;
+        k++;
+      }
+      if (k > tocStart + 1) blocks.splice(tocStart + 1, k - tocStart - 1);
     }
-    if (k > tocStart + 1) blocks.splice(tocStart + 1, k - tocStart - 1);
   }
 
   // gabungkan "BAB I" + judul bab yang tertulis di baris/paragraf berikutnya
